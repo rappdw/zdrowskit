@@ -1,0 +1,43 @@
+# zdrowskit on a Linux host: the daemon plus a Tailscale sidecar for Funnel.
+#
+# The daemon's HTTP receiver binds 127.0.0.1:8787 by design. The daemon shares
+# the sidecar's network namespace, so the sidecar's Funnel reaches that
+# loopback listener without the receiver ever binding a LAN interface.
+#
+# Usage and one-time setup: deploy/README.md.
+
+name: zdrowskit
+
+services:
+  tailscale:
+    image: tailscale/tailscale:stable
+    hostname: zdrowskit
+    environment:
+      TS_AUTHKEY: ${TS_AUTHKEY:?set TS_AUTHKEY in deploy/.env}
+      TS_STATE_DIR: /var/lib/tailscale
+      TS_SERVE_CONFIG: /config/funnel.json
+      TS_USERSPACE: "true"
+    volumes:
+      - tailscale-state:/var/lib/tailscale
+      - ./funnel.json:/config/funnel.json:ro
+    restart: unless-stopped
+
+  zdrowskit:
+    build:
+      context: ..
+      dockerfile: deploy/Dockerfile
+    network_mode: service:tailscale
+    depends_on:
+      - tailscale
+    env_file:
+      - path: ../.env
+        required: false
+    environment:
+      ZDROWSKIT_HOME: /data
+    volumes:
+      - zdrowskit-home:/data
+    restart: unless-stopped
+
+volumes:
+  tailscale-state:
+  zdrowskit-home:
