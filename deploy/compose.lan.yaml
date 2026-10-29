@@ -1,0 +1,47 @@
+# zdrowskit on a home LAN: the daemon plus a Caddy sidecar terminating TLS with
+# an existing certificate. Nothing is exposed to the internet; the phone
+# reaches the host on the home network, or over a VPN into it when away.
+#
+# The daemon's HTTP receiver binds 127.0.0.1:8787 by design. The daemon shares
+# Caddy's network namespace, so Caddy proxies to that loopback listener and only
+# Caddy's port is published, on the LAN interface named by ZDROWSKIT_LAN_IP.
+#
+# zdrowskit's state (ZDROWSKIT_HOME) is a host folder bind-mounted at /data.
+# Usage and one-time setup: deploy/README.md ("LAN with your own certificate").
+
+name: zdrowskit
+
+services:
+  caddy:
+    image: caddy:2.10
+    ports:
+      # Bound to one interface: Docker's published ports bypass host firewalls.
+      - "${ZDROWSKIT_LAN_IP:?set ZDROWSKIT_LAN_IP in deploy/.env}:443:443"
+    environment:
+      ZDROWSKIT_HOSTNAME: ${ZDROWSKIT_HOSTNAME:?set ZDROWSKIT_HOSTNAME in deploy/.env}
+      TLS_CERT_FILE: ${TLS_CERT_FILE:-fullchain.pem}
+      TLS_KEY_FILE: ${TLS_KEY_FILE:-privkey.pem}
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - ${TLS_CERT_DIR:?set TLS_CERT_DIR in deploy/.env}:/certs:ro
+      - caddy-data:/data
+    restart: unless-stopped
+
+  zdrowskit:
+    build:
+      context: ..
+      dockerfile: deploy/Dockerfile
+    network_mode: service:caddy
+    depends_on:
+      - caddy
+    env_file:
+      - path: ../.env
+        required: false
+    environment:
+      ZDROWSKIT_HOME: /data
+    volumes:
+      - ${ZDROWSKIT_HOME_DIR:?set ZDROWSKIT_HOME_DIR in deploy/.env}:/data
+    restart: unless-stopped
+
+volumes:
+  caddy-data:

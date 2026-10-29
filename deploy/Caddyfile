@@ -1,0 +1,12 @@
+# TLS with an existing certificate (e.g. a wildcard for your domain), proxied
+# to the zdrowskit receiver on the shared loopback. Values come from the
+# container environment set in compose.lan.yaml.
+{
+	# The certificate is supplied, so no ACME; and no :80 redirect listener.
+	auto_https disable_redirects
+}
+
+{$ZDROWSKIT_HOSTNAME}:443 {
+	tls /certs/{$TLS_CERT_FILE} /certs/{$TLS_KEY_FILE}
+	reverse_proxy 127.0.0.1:8787
+}

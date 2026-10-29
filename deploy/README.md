@@ -26,12 +26,14 @@ sudo chown 1000:1000 ~/zdrowskit-home   # only if your user is not uid 1000
 
 ```dotenv
 ZDROWSKIT_HOME_DIR=/home/you/zdrowskit-home
-TS_AUTHKEY=tskey-auth-...
+TS_AUTHKEY=tskey-auth-...   # optional
 ```
 
-Create the Tailscale key in the admin console. Funnel must be allowed for the
-node by the tailnet policy (`funnel` node attribute). See Tailscale's Funnel
-docs.
+`TS_AUTHKEY` is optional. Without it, the sidecar logs a one-time login URL on
+first start (`docker compose -f deploy/compose.yaml logs tailscale`); open it
+to add the node to your tailnet, and the `tailscale-state` volume keeps the
+login across restarts. Either way, Funnel must be allowed for the node by the
+tailnet policy (`funnel` node attribute). See Tailscale's Funnel docs.
 
 **`.env` in the repository root** is passed to the daemon. Start from
 `.env_example`:
@@ -71,6 +73,43 @@ zk ingest status
 ```
 
 `restart: unless-stopped` brings both back after a reboot once Docker starts.
+
+## LAN with your own certificate (instead of Tailscale)
+
+If the phone can reach the host on your home network, and over a VPN such as
+WireGuard when away, `compose.lan.yaml` replaces the Tailscale sidecar with a
+Caddy sidecar. Caddy serves an existing certificate (a wildcard for your domain
+works) and proxies to the daemon's loopback receiver. Nothing is exposed to the
+internet.
+
+1. **DNS:** an A record for the hostname, e.g. `zdrowskit.example.org`,
+   pointing at the host's LAN IP, resolvable at home and through the VPN.
+2. **`deploy/.env`** (alongside `ZDROWSKIT_HOME_DIR`; `TS_AUTHKEY` is unused):
+
+   ```dotenv
+   ZDROWSKIT_LAN_IP=192.168.1.20
+   ZDROWSKIT_HOSTNAME=zdrowskit.example.org
+   TLS_CERT_DIR=/path/to/cert/dir     # read-only mount
+   TLS_CERT_FILE=fullchain.pem        # default
+   TLS_KEY_FILE=privkey.pem           # default
+   ```
+
+3. Use `-f deploy/compose.lan.yaml` everywhere this README says
+   `-f deploy/compose.yaml`, including the `zk` alias. Skip the Funnel steps.
+   The upload URL is `https://<ZDROWSKIT_HOSTNAME>` plus the paths in
+   `docs/http-ingest.md`. Check it from a device on the LAN with
+   `curl https://<ZDROWSKIT_HOSTNAME>/healthz`.
+4. **Certificate renewal:** Caddy reads the files at startup and on reload. After
+   each renewal, run
+   `docker compose -f deploy/compose.lan.yaml exec caddy caddy reload --config /etc/caddy/Caddyfile --force`,
+   for example from your renewal tool's deploy hook.
+5. **Phone away from home:** turn on the VPN's on-demand mode (in the WireGuard
+   app: connect on cellular and on Wi-Fi other than home) and use your home DNS
+   resolver in the tunnel, so background exports reach the host. A missed upload
+   is refilled by the next rolling export; there is no server-side queue.
+
+The daemon's Tailscale health checks report "unknown" without a Tailscale CLI;
+that is expected here, not a fault.
 
 ## Context files
 
