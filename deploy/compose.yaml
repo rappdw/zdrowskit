@@ -4,6 +4,8 @@
 # the sidecar's network namespace, so the sidecar's Funnel reaches that
 # loopback listener without the receiver ever binding a LAN interface.
 #
+# zdrowskit's state (ZDROWSKIT_HOME) is a host folder bind-mounted at /data.
+#
 # Usage and one-time setup: deploy/README.md.
 
 name: zdrowskit
@@ -35,9 +37,10 @@ services:
     environment:
       ZDROWSKIT_HOME: /data
     volumes:
-      - zdrowskit-home:/data
+      # A host folder, not a named volume, so context files can be edited,
+      # versioned in a private repo and backed up with ordinary tools.
+      - ${ZDROWSKIT_HOME_DIR:?set ZDROWSKIT_HOME_DIR in deploy/.env}:/data
     restart: unless-stopped
 
 volumes:
   tailscale-state:
-  zdrowskit-home:
