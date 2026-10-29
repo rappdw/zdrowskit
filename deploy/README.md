@@ -136,17 +136,47 @@ need Telegram, not an LLM.
 
 ## Backfill
 
-HTTP uploads are capped per request (`docs/http-ingest.md`), so import years of
-history from Manual Export JSON files instead ("Historical Backfill" in
-`docs/apple-health.md`). Put them in a host folder laid out as Auto Export
-writes them, `Metrics/*.json` and `Workouts/*.json`, then import it once:
+HTTP uploads are capped per request (`docs/http-ingest.md`), and years of
+history exceed the caps: the receiver answers `413` and imports nothing. An
+automation's **Manual Export** sends to the automation's URL, so it cannot
+carry a large backfill either. Export history to files instead:
 
-```bash
-docker compose -f deploy/compose.yaml run --rm -v /path/to/export:/backfill:ro \
-  zdrowskit uv run --no-sync python main.py import --source local --data-dir /backfill
-```
+1. In Auto Export's **Export** tab, export **Health Metrics** as JSON v2 at
+   aggregation **Hours**, and **Workouts** as JSON v2 at **Minutes**, each
+   saved to Files. One file cannot carry both: they need different aggregations
+   ("Why the aggregation settings matter" in `docs/apple-health.md`).
+2. Copy them to the host in the layout Auto Export writes, unzipping the
+   Workouts archive if the app produced one. File names do not matter:
 
-The import is idempotent, so re-running it does not duplicate data.
+   ```text
+   /path/to/export/Metrics/*.json
+   /path/to/export/Workouts/*.json
+   ```
+
+3. Check that Metrics really are hourly. Dates with varying clock times mean
+   `Hours`; every date at `00:00:00` means `Days`, so re-export:
+
+   ```bash
+   docker compose -f deploy/compose.yaml run --rm -v /path/to/export:/backfill:ro zdrowskit \
+     uv run --no-sync python -c '
+   import json, glob
+   d = json.load(open(glob.glob("/backfill/Metrics/*.json")[0]))["data"]["metrics"]
+   print([e["date"] for e in d[0]["data"][:4]])'
+   ```
+
+4. Import, then confirm the stored date range with `zk status`:
+
+   ```bash
+   docker compose -f deploy/compose.yaml run --rm -v /path/to/export:/backfill:ro \
+     zdrowskit uv run --no-sync python main.py import --source local --data-dir /backfill
+   ```
+
+Use `-f deploy/compose.lan.yaml` with the LAN setup. Each route workout is
+reverse-geocoded on first import, which is slow for years of outdoor workouts;
+add `-e ZDROWSKIT_LOCATION_GEOCODER=off` after `--rm` to skip place names. The
+import is idempotent, so re-running it does not duplicate data. Back up
+`health.db` afterwards, and delete the export files: they are health data in
+plain files.
 
 ## Versioning and backups
 
