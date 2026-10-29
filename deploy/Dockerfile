@@ -13,6 +13,12 @@ ENV UV_COMPILE_BYTECODE=1 \
     PYTHONUNBUFFERED=1 \
     ZDROWSKIT_HOME=/data
 
+# Kaleido renders chart PNGs through a Chromium-based browser and finds
+# Debian's `chromium` on PATH. Google Chrome has no Linux arm64 build.
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends chromium fonts-liberation \
+    && rm -rf /var/lib/apt/lists/*
+
 RUN useradd --create-home --uid 1000 zdrowskit \
     && mkdir -p /data /opt/venv \
     && chown zdrowskit:zdrowskit /data /opt/venv
