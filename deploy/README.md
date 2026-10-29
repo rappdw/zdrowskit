@@ -26,8 +26,13 @@ sudo chown 1000:1000 ~/zdrowskit-home   # only if your user is not uid 1000
 
 ```dotenv
 ZDROWSKIT_HOME_DIR=/home/you/zdrowskit-home
+TZ=America/Denver           # your IANA time zone
 TS_AUTHKEY=tskey-auth-...   # optional
 ```
+
+`TZ` is required: the daemon reads the container clock for report and coach
+schedules, nudge quiet hours and where one day ends, and a container otherwise
+runs in UTC.
 
 `TS_AUTHKEY` is optional. Without it, the sidecar logs a one-time login URL on
 first start (`docker compose -f deploy/compose.yaml logs tailscale`); open it

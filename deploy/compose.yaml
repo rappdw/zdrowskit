@@ -38,6 +38,8 @@ services:
         required: false
     environment:
       ZDROWSKIT_HOME: /data
+      # Schedules, quiet hours and day boundaries use the container clock.
+      TZ: ${TZ:?set TZ in deploy/.env, e.g. America/Denver}
     volumes:
       # A host folder, not a named volume, so context files can be edited,
       # versioned in a private repo and backed up with ordinary tools.

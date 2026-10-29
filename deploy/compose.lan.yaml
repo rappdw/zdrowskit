@@ -39,6 +39,8 @@ services:
         required: false
     environment:
       ZDROWSKIT_HOME: /data
+      # Schedules, quiet hours and day boundaries use the container clock.
+      TZ: ${TZ:?set TZ in deploy/.env, e.g. America/Denver}
     volumes:
       - ${ZDROWSKIT_HOME_DIR:?set ZDROWSKIT_HOME_DIR in deploy/.env}:/data
     restart: unless-stopped
