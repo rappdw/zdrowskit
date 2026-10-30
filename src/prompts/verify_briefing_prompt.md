@@ -44,8 +44,13 @@ Checklist:
   compound claim separately.
 - **Thresholds.** Physiological comparisons must be to this person's own data.
   Flag invented cutoffs, normal ranges, or appeals to research.
-- **5K trajectory.** Only allowed when evidence holds recent runs that support
-  it. Flag an estimate built on a single run or on no runs.
+- **5K trajectory.** Only allowed from a race-intensity effort in evidence: a
+  time trial, a race, or interval reps at goal speed. Flag any comparison of
+  an easy, recovery or long run's pace with goal pace, and any estimate built
+  on a single run or on no runs.
+- **Safety boilerplate.** Flag a generic warning-sign line (pain, dizziness,
+  unusual fatigue, shortness of breath) when nothing in evidence gives a
+  reason for it today. Remove it; do not fail the draft over it.
 - No meta-talk, no markdown tables, no headers.
 - When the evidence says the display units are imperial, paces in mm:ss/mi,
   speeds in mph and distances in miles are correct; do not flag them.
