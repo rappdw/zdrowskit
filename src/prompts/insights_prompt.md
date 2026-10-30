@@ -180,7 +180,7 @@ points joined by a line read as a trend to everyone who sees them.
 `data["current_week"]["days"]` holds per-day data; `data["history"]` is a list
 of `{{"summary": <weekly summary dict>}}` with `week_label`, `total_run_km`,
 `run_count`, `lift_count`, `avg_hrv_ms`, `avg_resting_hr`,
-`avg_sleep_total_h`. Use `.split()[0]` on `week_label` for a short axis label.
+`avg_sleep_total_h`. Use `.split(" (")[0]` on `week_label` for a short axis label (the week's Monday, e.g. `Oct 26`).
 
 Chart rules: produce a `fig`; use `go`, `px`, `np`; `{chart_theme}` template;
 tight margins; red `#e74c3c` concerning, green `#2ecc71` good, blue `#3498db`
@@ -190,7 +190,7 @@ neutral; `fig.add_hline(line_dash="dash")` for baselines; short axis labels.
 import numpy as np
 import plotly.graph_objects as go
 weeks = data["history"][-8:]
-labels = [w["summary"]["week_label"].split()[0] for w in weeks]
+labels = [w["summary"]["week_label"].split(" (")[0] for w in weeks]
 km = np.array([w["summary"].get("total_run_km", 0) or 0 for w in weeks], dtype=float)
 hrv = np.array([w["summary"].get("avg_hrv_ms", 0) or 0 for w in weeks], dtype=float)
 fig = go.Figure([

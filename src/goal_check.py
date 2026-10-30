@@ -27,6 +27,7 @@ import sqlite3
 from dataclasses import dataclass, field
 from datetime import date, datetime, timedelta, timezone
 
+from aggregator import week_start_label
 from challenges import active_challenge, last_ended_on, open_proposal
 from config import (
     ADHERENCE_MIN_WEEKS,
@@ -89,11 +90,6 @@ class _WeekResult:
     @property
     def met(self) -> bool:
         return self.actual >= self.target
-
-
-def _week_label(week_start: str) -> str:
-    """Return a compact ISO week label such as ``W38``."""
-    return f"W{date.fromisoformat(week_start).isocalendar().week:02d}"
 
 
 def _fmt(value: float, decimals: int) -> str:
@@ -208,7 +204,7 @@ def build_goal_check(
     in_progress = include_current_week and bool(weeks) and weeks[0] == current_monday
 
     def week_tag(week_start: str) -> str:
-        label = _week_label(week_start)
+        label = week_start_label(week_start)
         return (
             f"{label} so far" if in_progress and week_start == current_monday else label
         )
@@ -217,13 +213,13 @@ def build_goal_check(
         lines.append("No completed weeks with weekly targets yet.")
     else:
         results, latest = _adherence(conn, weeks, today)
-        span = f"{_week_label(weeks[-1])}–{_week_label(weeks[0])}"
+        span = f"{week_start_label(weeks[-1])}–{week_start_label(weeks[0])}"
         noun = "week" if len(weeks) == 1 else "weeks"
         if in_progress:
             lines.append(
                 f"Weekly targets over the last {len(weeks)} {noun} with targets "
-                f"({span}), oldest first. {_week_label(current_monday)} is this "
-                f"week, counted through today ({today.strftime('%A')}): anything "
+                f"({span}), oldest first. The week of "
+                f"{week_start_label(current_monday)} is this week, counted through today ({today.strftime('%A')}): anything "
                 "not yet synced is missing from it."
             )
         else:

@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from datetime import date
+
 from models import DailySnapshot, WorkoutSnapshot, WorkoutSplit
 from aggregator import (
     _best_run_pace,
@@ -11,6 +13,7 @@ from aggregator import (
     _week_label,
     collapse_adjacent_run_sessions,
     summarise,
+    week_start_label,
 )
 
 
@@ -32,13 +35,13 @@ class TestWeekLabel:
     def test_full_week(self) -> None:
         snaps = [DailySnapshot(date=f"2026-03-{d:02d}") for d in range(9, 16)]
         label = _week_label(snaps)
-        assert "2026-W11" in label
+        assert label.startswith("Mar 9 ")
         assert "2026-03-09" in label
         assert "2026-03-15" in label
 
     def test_single_day(self) -> None:
         label = _week_label([DailySnapshot(date="2026-01-01")])
-        assert "2026-W01" in label
+        assert label.startswith("Dec 29 ")
         assert "2026-01-01" in label
 
     def test_empty(self) -> None:
@@ -376,3 +379,11 @@ class TestSummarise:
 
         assert summary.run_count == 2
         assert summary.total_run_km == 4.8
+
+
+class TestWeekStartLabel:
+    def test_names_the_monday_without_a_leading_zero(self) -> None:
+        assert week_start_label("2026-11-02") == "Nov 2"
+
+    def test_accepts_a_date(self) -> None:
+        assert week_start_label(date(2026, 10, 26)) == "Oct 26"

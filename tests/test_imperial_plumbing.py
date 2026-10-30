@@ -81,7 +81,7 @@ class TestGoalCheckUnits:
         ).text
         assert "Run km (16.1 km/week)" in metric
         assert "Run mi (10 mi/week)" in imperial
-        assert "W36 3.1/10" in imperial
+        assert "Aug 31 3.1/10" in imperial
         assert "km" not in imperial
 
     def test_met_is_decided_on_stored_values(

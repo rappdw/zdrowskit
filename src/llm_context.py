@@ -408,7 +408,7 @@ def append_history(
     Args:
         context_dir: Directory containing history.md.
         memory_block: Text to append as this week's memory.
-        week_label: ISO week label (e.g. "2026-W12") used as the entry
+        week_label: Week label (e.g. "week of Oct 26, 2026") used as the entry
             heading.  Falls back to today's date if not provided.
     """
     history_path = context_dir / "history.md"

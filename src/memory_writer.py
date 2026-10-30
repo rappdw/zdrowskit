@@ -43,7 +43,7 @@ def build_memory_messages(
 
     Args:
         report: The final visible report, post-verification.
-        week_label: ISO week label the report covers, e.g. "2026-W31".
+        week_label: Label of the week the report covers, e.g. "week of Oct 26, 2026".
         review_facts: Shared review facts handed to the report writer.
         log: Recent user notes.
         history: Existing memory entries, so the call can avoid repeating one.
@@ -84,7 +84,7 @@ def write_memory(
 
     Args:
         report: The final visible report, post-verification.
-        week_label: ISO week label the report covers.
+        week_label: Label of the week the report covers.
         review_facts: Shared review facts handed to the report writer.
         log: Recent user notes.
         history: Existing memory entries.

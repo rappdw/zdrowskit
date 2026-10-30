@@ -83,6 +83,23 @@ def _hrv_trend(snapshots: list[DailySnapshot]) -> str | None:
     return "stable"
 
 
+def week_start_label(week_start: date | str) -> str:
+    """Return a week's Monday as a short label, e.g. ``Oct 26``.
+
+    Every week shown to the user is named by its Monday, never its ISO week
+    number: nobody knows offhand which week W43 is. Report filenames keep the
+    ISO week, which sorts and is never read as a date.
+
+    Args:
+        week_start: The week's Monday, as a date or ISO date string.
+
+    Returns:
+        Abbreviated month and day, with no leading zero.
+    """
+    day = date.fromisoformat(week_start) if isinstance(week_start, str) else week_start
+    return f"{day:%b} {day.day}"
+
+
 def _week_label(snapshots: list[DailySnapshot]) -> str:
     """Build a human-readable week label from the snapshot date range.
 
@@ -90,18 +107,17 @@ def _week_label(snapshots: list[DailySnapshot]) -> str:
         snapshots: List of DailySnapshot objects; order does not matter.
 
     Returns:
-        A string like "2026-W11 (2026-03-09 – 2026-03-15)", or "unknown"
-        if snapshots is empty.
+        A string like "Mar 9 (2026-03-09 – 2026-03-15)", named by the week's
+        Monday, or "unknown" if snapshots is empty.
     """
     if not snapshots:
         return "unknown"
     dates = sorted(s.date for s in snapshots)
     start = dates[0]
     end = dates[-1]
-    # ISO week from first date
-    d = date.fromisoformat(start)
-    iso_week = f"{d.isocalendar().year}-W{d.isocalendar().week:02d}"
-    return f"{iso_week} ({start} – {end})"
+    first = date.fromisoformat(start)
+    monday = first - timedelta(days=first.weekday())
+    return f"{week_start_label(monday)} ({start} – {end})"
 
 
 def _best_run_pace(runs: list[WorkoutSnapshot]) -> float | None:

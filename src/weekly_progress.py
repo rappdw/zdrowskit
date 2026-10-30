@@ -42,6 +42,7 @@ from dataclasses import dataclass, replace
 from datetime import date, datetime, timezone
 from pathlib import Path
 
+from aggregator import week_start_label
 from config import (
     WEEKLY_PROGRESS_BAR_CELLS,
     WEEKLY_PROGRESS_MAX_DOTS,
@@ -329,12 +330,6 @@ def measure_week(
     return rings
 
 
-def week_label_for(week_start: str) -> str:
-    """Return the ISO week label for a week's Monday, e.g. ``2026-W36``."""
-    iso = date.fromisoformat(week_start).isocalendar()
-    return f"{iso.year}-W{iso.week:02d}"
-
-
 def ring_unit(ring: RingProgress) -> str:
     """Return the unit printed after a ring's numbers.
 
@@ -398,7 +393,7 @@ def render_progress_block(
     unit_w = max(len(text) for text in units)
 
     days = rings[0].days_elapsed
-    lines = [f"Week {week_label_for(week_start)} · day {days} of {DAYS_IN_WEEK}"]
+    lines = [f"Week of {week_start_label(week_start)} · day {days} of {DAYS_IN_WEEK}"]
     for ring, label, value, unit in zip(rings, labels, values, units):
         bar = render_bar(
             ring.fraction,

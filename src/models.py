@@ -10,7 +10,7 @@ Example:
     from models import DailySnapshot, WeeklySummary
 
     day = DailySnapshot(date="2026-03-13", steps=9500, resting_hr=52)
-    summary = WeeklySummary(week_label="2026-W11 (2026-03-09 – 2026-03-15)")
+    summary = WeeklySummary(week_label="Mar 9 (2026-03-09 – 2026-03-15)")
 """
 
 from __future__ import annotations
@@ -216,7 +216,7 @@ class WeeklySummary:
     """Aggregated health and fitness stats for a single week.
 
     Attributes:
-        week_label: Human-readable label, e.g. "2026-W11 (2026-03-09 – 2026-03-15)".
+        week_label: Human-readable label, e.g. "Mar 9 (2026-03-09 – 2026-03-15)".
         run_count: Number of run workouts in the week.
         lift_count: Number of strength/lift workouts in the week.
         walk_count: Number of walk workouts in the week.
@@ -250,7 +250,7 @@ class WeeklySummary:
         avg_sleep_awake_h: Mean nightly awake time during sleep (hours).
     """
 
-    week_label: str  # "2026-W11 (2026-03-09 – 2026-03-15)"
+    week_label: str  # "Mar 9 (2026-03-09 – 2026-03-15)"
     # Workout counts
     run_count: int = 0
     lift_count: int = 0

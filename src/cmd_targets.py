@@ -8,6 +8,7 @@ import sys
 from datetime import date
 from pathlib import Path
 
+from aggregator import week_start_label
 from config import CONTEXT_DIR
 from llm_context import load_context
 from plan_frame import load_plan_frame, progress_paused
@@ -17,7 +18,6 @@ from weekly_progress import (
     display_rings,
     measure_week,
     render_progress_block,
-    week_label_for,
 )
 from weekly_targets import (
     StoredTarget,
@@ -64,7 +64,7 @@ def cmd_targets(args: argparse.Namespace) -> None:
     if subcommand == "clear":
         removed = clear_targets(conn, week_start)
         print(
-            f"Cleared {removed} target(s) for week {week_label_for(week_start)}. "
+            f"Cleared {removed} target(s) for the week of {week_start_label(week_start)}. "
             "The next notification will derive them again."
         )
         return

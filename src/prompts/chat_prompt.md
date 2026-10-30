@@ -334,7 +334,7 @@ Chart rules: produce a `fig` variable; use `go`, `px`, and `np` as needed;
 `#e74c3c` concerning, green `#2ecc71` good, blue `#3498db` neutral); use
 `fig.add_hline(line_dash="dash")` for baselines/targets;
 `fig.add_annotation(arrowhead=2)` for callouts; short x-axis labels
-(`"Mon 23"` daily, `"W10"` weekly).
+(`"Mon 23"` daily, `"Oct 26"` weekly, naming the week by its Monday).
 
 ## Context File Updates
 

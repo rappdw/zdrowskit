@@ -658,7 +658,7 @@ def cmd_insights(
         logger.info("No memory entries this week; history.md unchanged")
 
     # Push notifications
-    notify_subject = f"Week {week_label} Review" if week_label else "Report"
+    notify_subject = f"Review: {week_label}" if week_label else "Report"
 
     telegram_message_id: int | None = None
     if args.telegram:

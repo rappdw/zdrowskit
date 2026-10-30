@@ -24,7 +24,6 @@ from weekly_progress import (
     render_progress_block,
     render_progress_line,
     ring_label,
-    week_label_for,
     weekly_progress_block,
     weekly_progress_nudge_line,
 )
@@ -285,7 +284,7 @@ class TestRenderProgressBlock:
         block = render_progress_block(
             [_ring("distance_km_week", 30, 21.4, category="run")], week_start=WEEK_START
         )
-        assert "Week 2026-W36 · day 4 of 7" in block
+        assert "Week of Aug 31 · day 4 of 7" in block
 
     def test_bars_are_column_aligned(self) -> None:
         block = render_progress_block(
@@ -947,14 +946,6 @@ class TestNudgeLineIsGatedOnChange:
             in_memory_db, strategy_md=self.strategy, today=WEDNESDAY
         )
         assert block is not None
-
-
-class TestWeekLabel:
-    def test_label_matches_the_iso_week(self) -> None:
-        assert week_label_for(WEEK_START) == "2026-W36"
-
-    def test_sunday_of_the_same_week(self) -> None:
-        assert week_label_for("2026-09-07") == "2026-W37"
 
 
 class TestNeutralProgress:

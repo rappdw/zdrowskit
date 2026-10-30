@@ -10,7 +10,7 @@ import logging
 import sqlite3
 from datetime import date, datetime, timedelta
 
-from aggregator import summarise
+from aggregator import summarise, week_start_label
 from config import SLEEP_SYNC_CUTOFF_HOUR
 from report import group_by_week, to_dict
 from store import load_date_range, load_snapshots
@@ -89,8 +89,7 @@ def build_llm_data(
     history_weeks = group_by_week(history_snaps)
 
     ws = date.fromisoformat(week_start)
-    iso = ws.isocalendar()
-    week_label = f"{iso.year}-W{iso.week:02d}"
+    week_label = f"week of {week_start_label(ws)}, {ws.year}"
 
     days = _shift_sleep_forward([to_dict(s) for s in current_snaps], week_start)
 

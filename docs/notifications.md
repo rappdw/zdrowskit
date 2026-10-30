@@ -31,7 +31,7 @@ the message.
 A report carries the full strip:
 
 ```
-Week 2026-W36 · day 4 of 7
+Week of Aug 31 · day 4 of 7
 Run        ███████░░░  21.4/30 km        8.6 left
 Lifts      ██████████      2/2 sessions  done
 Sleep ≥7h  ████░░░░░░      2/5 nights    3 left

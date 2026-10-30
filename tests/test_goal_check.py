@@ -96,7 +96,7 @@ class TestBuildGoalCheck:
 
         assert [t.key for t in check.triggers] == ["miss:sessions_week/run"]
         assert "missed in 3 of the last 4 weeks" in check.triggers[0].sentence
-        assert "W36 3/3, W37 2/3, W38 2/3, W39 1/3" in check.text
+        assert "Aug 31 3/3, Sep 7 2/3, Sep 14 2/3, Sep 21 1/3" in check.text
         assert "SKIP is not an option" in check.text
 
     def test_target_met_every_week_is_reported_not_forced(
