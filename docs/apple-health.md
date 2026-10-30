@@ -15,16 +15,21 @@ Three transports carry the same Auto Export JSON to the same parser. They differ
 in latency, how many people they can serve, and what happens when something is
 switched off.
 
-| | HTTP (Tailscale) | iCloud / local | Google Drive |
+| | HTTP (Tailscale or self-hosted) | iCloud / local | Google Drive |
 |---|---|---|---|
 | Profiles | Many | Operator only | Many |
 | Delivery | Push, on export | File watch + 3 min debounce | Poll, up to 5 min |
-| Host requirement | Tailscale-capable | Mac on the same Apple ID | Any macOS or Linux |
+| Host requirement | Tailscale-capable, or your own reverse proxy and VPN | Mac on the same Apple ID | Any macOS or Linux |
 | Survives host downtime | No | Yes | Yes |
 | Historical backfill | Small/manual only; request limits apply | Yes | Yes |
 | Credentials to manage | Per-profile token | None | Service-account key |
 
-### HTTP via Tailscale Funnel (default)
+### HTTP (default)
+
+The phone reaches the receiver through Tailscale Funnel or through your own
+reverse proxy and VPN; [HTTP ingest](http-ingest.md#choosing-how-the-phone-reaches-the-receiver)
+compares the two. The points below hold for both, except where they name
+Tailscale.
 
 **Pros**
 
@@ -44,8 +49,9 @@ switched off.
 - **There is no server-side queue while the host is down.** iCloud and Drive
   retain files until the daemon catches up; HTTP depends on a later rolling
   export or manual resend to refill the missed window.
-- Depends on Tailscale Funnel, plus the macOS user being logged in and
-  Tailscale running.
+- Depends on the path in front of the receiver: with Funnel, the macOS user
+  logged in and Tailscale running; self-hosted, your proxy, DNS and the
+  phone's VPN.
 - Bounded by per-metric and per-workout entry caps, so a large historical
   backfill still needs a different transport.
 - Both automations must arrive within an hour of each other to pair.

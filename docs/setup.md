@@ -10,7 +10,7 @@ routing, see [LLM setup](llm.md). To migrate an existing installation, use
 
 - Python 3.12+
 - [uv](https://github.com/astral-sh/uv)
-- [Tailscale](https://tailscale.com/docs/install/mac) on the host when using the default HTTP transport
+- [Tailscale](https://tailscale.com/docs/install/mac) on the host when using the default HTTP transport, or your own reverse proxy and VPN ([compared here](http-ingest.md#choosing-how-the-phone-reaches-the-receiver))
 - Apple Health data exported by [Health Auto Export](https://apps.apple.com/app/id1115567069), with a Premium subscription (see [Getting the App](apple-health.md#getting-the-app))
 - LLM API keys for the routes you want to use
 - A Telegram bot token if you want notifications and chat

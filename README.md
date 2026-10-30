@@ -39,7 +39,7 @@ Three loops run continuously:
 - Apple Watch + iPhone
 - [Health Auto Export](https://apps.apple.com/app/id1115567069) with a **Premium** subscription, for scheduled Apple Health JSON export
 - A macOS or Linux machine that runs Python
-- [Tailscale](https://tailscale.com/docs/install/mac) on the host when using the default HTTP transport
+- [Tailscale](https://tailscale.com/docs/install/mac) on the host when using the default HTTP transport, or your own reverse proxy and VPN ([compared here](docs/http-ingest.md#choosing-how-the-phone-reaches-the-receiver))
 - Python 3.12+ and [uv](https://github.com/astral-sh/uv)
 - A capable LLM provider API key
 - A dedicated Telegram bot token for notifications and chat. One bot serves
@@ -121,7 +121,7 @@ Run any command with `--help` for the full flag list. See [Commands](docs/comman
 |---|---|
 | [Setup](docs/setup.md) | Installation, `.env`, first-run context files, first LLM report |
 | [Apple Health data export](docs/apple-health.md) | Transport pros and cons, Auto Export setup, iCloud paths, historical backfill |
-| [HTTP ingest](docs/http-ingest.md) | Direct Auto Export uploads, Tailscale Funnel, tokens, validation, retention |
+| [HTTP ingest](docs/http-ingest.md) | Direct Auto Export uploads, Tailscale Funnel or self-hosted proxy + VPN, tokens, validation, retention |
 | [Google Drive import](docs/google-drive.md) | Portable API fetch, service-account setup, multiple profiles |
 | [Family hosting](docs/family-hosting.md) | Profile roster, account linking, adoption, isolation, backup |
 | [Multi-profile architecture](docs/multi-profile.md) | Implemented routing, storage boundaries, authorization, migrations |

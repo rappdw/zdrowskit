@@ -1,13 +1,17 @@
 # Auto Export HTTP Ingest
 
 HTTP is the default transport for new profiles. Auto Export sends JSON directly
-to a loopback receiver in the zdrowskit daemon; Tailscale Funnel supplies the
-stable public HTTPS URL. Google Drive and local/iCloud imports remain available.
+to a loopback receiver in the zdrowskit daemon. Something in front of it has to
+give the phone an HTTPS URL. There are two supported choices: Tailscale Funnel
+(the default) or a self-hosted reverse proxy reached over your own VPN. See
+[Choosing How the Phone Reaches the Receiver](#choosing-how-the-phone-reaches-the-receiver).
+Google Drive and local/iCloud imports remain available.
 
 ## Security Model
 
 - The receiver binds to `127.0.0.1:8787`, never the LAN interface.
-- Tailscale Funnel terminates public HTTPS and forwards to that loopback port.
+- Tailscale Funnel or a self-hosted reverse proxy on the same host terminates
+  HTTPS and forwards to that loopback port.
 - Each profile has a random bearer token. The token, not the request body or
   Auto Export headers, selects the destination profile.
 - `~/Documents/zdrowskit/ingest_tokens.json` stores only SHA-256 token hashes,
@@ -17,7 +21,73 @@ stable public HTTPS URL. Google Drive and local/iCloud imports remain available.
 The host operator can read every hosted profile database. Explain this to each
 person before accepting their health data.
 
+## Choosing How the Phone Reaches the Receiver
+
+Both options keep the receiver on loopback, keep bearer-token authentication,
+and receive the same JSON. The difference is where HTTPS is terminated and who
+can reach the URL at all.
+
+| | Tailscale Funnel | Self-hosted: reverse proxy + VPN + DNS |
+|---|---|---|
+| Who can reach the URL | Anyone on the internet; the token gates uploads | Only devices on your network or connected to your VPN |
+| HTTPS certificate | Issued and renewed by Tailscale | Your own, for a domain you control |
+| Phone requirements | None beyond Auto Export | A VPN client with on-demand connection when away from home |
+| Host | Documented and self-repairing on macOS | Any host that can run a reverse proxy beside the daemon; the Docker deployment in `deploy/` uses this on Linux |
+| Third parties in the path | Tailscale's control plane, public DNS and ingress | None |
+| Family hosting | Easy: share a URL and a token | Each person needs VPN access to your network |
+| Monitoring | `ingest status` and `doctor` check the node and public DNS; the daemon repairs a stopped node | No path checks; stalls are caught by the sync alerts |
+
+### Tailscale Funnel (default)
+
+**Pros**
+
+- No domain, certificate, DNS record, router change or VPN to manage.
+- Works from anywhere: the phone needs no VPN, so background exports succeed
+  on any network.
+- Easiest way to serve several people: they get a URL and a token, not access
+  to your network.
+- zdrowskit monitors it: `ingest status` separates a disconnected node from a
+  missing public record, and the daemon restarts a stopped or wedged node.
+
+**Cons**
+
+- The endpoint is on the public internet. Only the token stands between a
+  stranger and the upload path, though invalid tokens are rejected before the
+  body is read.
+- It depends on Tailscale. The public DNS record has disappeared for a day or
+  more at a time with nothing wrong on the host; see
+  [The address stops resolving](#the-address-stops-resolving).
+- The setup and self-repair are written for a macOS host with the Tailscale
+  desktop app.
+
+### Self-hosted: reverse proxy, WireGuard and DNS
+
+**Pros**
+
+- Nothing is exposed to the internet: the URL only resolves and connects on
+  your network or through your VPN.
+- No third party is in the upload path, and you choose the hostname and
+  certificate, for example an existing wildcard certificate for your domain.
+- Runs on any host that can run a reverse proxy, including Linux in Docker.
+
+**Cons**
+
+- More pieces to own: a domain, a certificate and its renewal, a DNS record,
+  and a VPN into your network.
+- The phone must reach your network when away. That means a VPN with
+  on-demand connection; without it, background exports fail silently whenever
+  the phone is off your Wi-Fi.
+- Family hosting means giving each person VPN access to your network.
+- zdrowskit can't check or repair the path. You find out when the sync alerts
+  fire.
+
+Choose Funnel unless you already run a VPN into your home network and would
+rather not expose anything publicly. The setup sections below cover Funnel
+first; [Self-Hosted Setup](#self-hosted-setup) covers the other option.
+
 ## What Needs Tailscale
+
+This section and the next apply to Funnel only.
 
 Only the host running zdrowskit needs Tailscale. Family and friends do not need
 a Tailscale account or app: Funnel makes one narrow HTTPS endpoint publicly
@@ -102,6 +172,9 @@ curl http://127.0.0.1:8787/healthz
 # {"status":"ok"}
 ```
 
+If you are self-hosting, stop here and continue with
+[Self-Hosted Setup](#self-hosted-setup).
+
 Now create the Funnel:
 
 ```bash
@@ -178,6 +251,85 @@ same Funnel at the real receiver after `daemon-install`, or turn it off:
 tailscale funnel reset
 ```
 
+## Self-Hosted Setup
+
+The phone reaches the receiver on your own network, through a reverse proxy
+that terminates HTTPS with your certificate. Away from home it gets there over
+a VPN, WireGuard here.
+
+```text
+iPhone Auto Export (home Wi-Fi, or WireGuard on demand when away)
+  -> https://coach.example.org (DNS: the host's LAN address)
+  -> reverse proxy on the host, with your certificate
+  -> http://127.0.0.1:8787
+  -> zdrowskit daemon
+```
+
+You need:
+
+- **A hostname and certificate.** For example `coach.example.org`, covered by
+  a certificate you already have; a wildcard for the domain works. Nothing has
+  to be issued for zdrowskit.
+- **A DNS A record** pointing that name at the host's LAN address. It must
+  resolve both at home and through the VPN. Either publish it in your home
+  resolver and hand that resolver to VPN clients, or publish the private
+  address in public DNS. The second is simpler, but it makes your LAN address
+  public, and some resolvers with DNS-rebinding protection refuse private
+  answers.
+- **A reverse proxy beside the daemon.** The receiver only listens on
+  loopback, so the proxy must run on the same host, or share the daemon's
+  network namespace in Docker. Bind the proxy to the LAN interface only.
+- **A VPN into your network** for when the phone is away from home.
+
+### Run the proxy
+
+With the Docker deployment, use `deploy/compose.lan.yaml`. It adds a Caddy
+sidecar that serves your certificate and shares the daemon's network
+namespace; see "LAN with your own certificate" in `deploy/README.md`. On a
+host without Docker, any reverse proxy works. With Caddy:
+
+```text
+{
+	auto_https disable_redirects
+}
+
+coach.example.org:443 {
+	tls /path/to/fullchain.pem /path/to/privkey.pem
+	reverse_proxy 127.0.0.1:8787
+}
+```
+
+After each certificate renewal, reload the proxy so it serves the new files.
+With Caddy, run `caddy reload`, for example from your renewal tool's deploy
+hook.
+
+### Phone VPN
+
+In the WireGuard app, edit the tunnel's **On-Demand** settings:
+
+- **Cellular:** on.
+- **Wi-Fi:** on, with **Except these SSIDs** listing your home network.
+
+At home the phone reaches the host directly; anywhere else the tunnel comes up
+by itself when Auto Export runs. A split tunnel is enough: set **Allowed IPs**
+to your LAN subnet, plus your DNS server if it is outside it. If the hostname
+is only in your home resolver, set the tunnel's **DNS servers** to it.
+
+### Verify
+
+```bash
+curl https://coach.example.org/healthz        # from a machine on the LAN
+uv run python main.py ingest status
+```
+
+Then, on the iPhone with Wi-Fi off, open
+`https://coach.example.org/healthz` in Safari. `{"status":"ok"}` with no
+certificate warning confirms the path the background exports will take.
+
+Without the Tailscale CLI on the host, `ingest status` reports
+`Tailscale: unknown` and no public URL. That is expected here, not a fault. `ingest setup --funnel` and the Funnel sections
+below do not apply.
+
 ## iPhone Auto Export Setup
 
 REST API automations need Health Auto Export's Premium tier; see
@@ -187,7 +339,8 @@ Create two REST API automations with the same schedule.
 
 Shared settings:
 
-- URL: `https://<machine>.<tailnet>.ts.net/v1/auto-export`
+- URL: `https://<machine>.<tailnet>.ts.net/v1/auto-export`, or
+  `https://<your-hostname>/v1/auto-export` when self-hosting
 - Method: `POST`
 - Content type: `application/json`
 - Authorization: `Bearer <profile-token>`
@@ -357,6 +510,10 @@ tail -f ~/Library/Logs/zdrowskit.daemon.log
 curl http://127.0.0.1:8787/healthz
 tailscale funnel status
 ```
+
+The `Tailscale:` and `Public DNS:` checks below apply to Funnel. When self-hosting
+they read `unknown`, which is never treated as a fault; check the path with
+`curl https://<your-hostname>/healthz` from the LAN and from the phone instead.
 
 `ingest status` never prints bearer tokens. It reports receiver reachability,
 the public DNS URL when Tailscale is connected, token presence, arrival times,
@@ -577,6 +734,9 @@ unless forced with `--min-validity`.
 | Auto Export reports "A server with the specified hostname could not be found" | The public address is gone. Read the `Tailscale:` line of `main.py ingest status` before doing anything: `DISCONNECTED` means follow the advice printed under it, `connected` means wait. See [The address stops resolving](#the-address-stops-resolving). Do **not** recreate the Funnel — that has never been shown to republish a record. |
 | Auto Export reports "A TLS error caused the secure connection to fail" | A different fault: the record resolves and the handshake dies at the ingress. Every local signal stays green, including `Tailscale: connected`. See [The address resolves and nothing connects](#the-address-resolves-and-nothing-connects). |
 | `Tailscale: DISCONNECTED` | This Mac has lost its control connection, so Tailscale withdrew the public address. If Tailscale says it is stopped, run `tailscale up`; otherwise restart the Tailscale app. It reconnects in seconds and the address follows within about ten minutes. The daemon switches a stopped Tailscale on at its next check, restarts a wedged one once per outage, and reports whether either worked. |
+| Self-hosted: works at home, fails away | The VPN is not coming up for background exports. Check **On-Demand** is on for cellular and for Wi-Fi other than home, then open `/healthz` in Safari with Wi-Fi off. |
+| Self-hosted: hostname does not resolve over the VPN | The tunnel is not using a resolver that knows the name. Set the tunnel's **DNS servers** to your home resolver, and make sure that address is inside **Allowed IPs**. |
+| Self-hosted: certificate error after renewal | The proxy is still serving the old certificate. Reload it. |
 | `/` returns `404` | Expected. Production exposes `GET /healthz` and authenticated `POST /v1/auto-export`, not a directory listing. |
 | Auto Export gets `401` | Re-enter the exact `Bearer <token>` authorization value or rotate the profile token. |
 | Auto Export gets `422` | Read the returned error; normally aggregation, headers, JSON format, or an oversized export. |
