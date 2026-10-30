@@ -149,8 +149,9 @@ def cmd_briefing(
     Args:
         args: Parsed CLI arguments with db, model, months, telegram and the
             profile paths, including peloton_tokens_path, whose presence turns
-            on the Peloton class search; the daemon also passes recent_nudges
-            and the last coach summary.
+            on the Peloton class search, and an optional ``date`` to write the
+            briefing for another morning; the daemon also passes
+            recent_nudges and the last coach summary.
         reply_markup: Optional Telegram reply markup for the message.
 
     Returns:
@@ -166,7 +167,9 @@ def cmd_briefing(
         logger.error("%s", e)
         sys.exit(1)
 
-    today = date.today()
+    # --date rehearses another morning: the session, class search and saved
+    # file follow it, while the health data stays as of now.
+    today = getattr(args, "date", None) or date.today()
     conn = open_db(Path(args.db))
     units = units_from_args(args)
     health_data = build_llm_data(conn, getattr(args, "months", 1))
@@ -195,6 +198,7 @@ def cmd_briefing(
     messages = build_messages(
         context,
         health_data_text,
+        today=today,
         data_maturity=build_data_maturity(conn, context),
         units=units,
     )

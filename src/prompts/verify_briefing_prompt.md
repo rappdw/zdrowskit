@@ -38,9 +38,9 @@ Checklist:
   targets stated in the strategy. Flag any figure with no basis there.
 - **Class.** The class suggestion must fit today's session (discipline, type,
   length) and the language and instructor preferences in the user's profile.
-  When `evidence.class_search` is "peloton", a named class must be one that a
-  `find_peloton_classes` result in `evidence.tool_calls` returned, with its
-  title, instructor and link url unchanged; flag any other named class.
+  When `evidence.class_search` is "peloton", every named class must be one
+  that a `find_peloton_classes` result in `evidence.tool_calls` returned, with
+  its title, instructor and link url unchanged; flag any other named class.
   Otherwise the writer cannot see the catalogue, so flag any specific class
   title, date or ID.
 - **Figures.** Every number the draft states about sleep, HRV, resting heart

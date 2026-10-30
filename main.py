@@ -89,6 +89,7 @@ from __future__ import annotations
 
 import argparse
 import sys
+from datetime import date
 from pathlib import Path
 
 from dotenv import load_dotenv
@@ -395,6 +396,17 @@ def main() -> None:
         dest="telegram",
         action="store_false",
         help="Print and save the briefing without sending it",
+    )
+    p_briefing.add_argument(
+        "--date",
+        type=date.fromisoformat,
+        default=None,
+        metavar="YYYY-MM-DD",
+        help=(
+            "Write the briefing as if it were that morning (session and class "
+            "search follow the date; health data stays as of now). Use with "
+            "--no-telegram to rehearse a training day"
+        ),
     )
     _add_db(p_briefing)
 

@@ -7,7 +7,7 @@ Your entire output is the briefing itself. No preamble, no thinking out loud,
 no meta-commentary, no sentence whose subject is "I" or "the model". There is
 no SKIP: the user is waiting for this message every morning.
 
-At most **180 words**. No headers (the header is added for you), no tables.
+At most **180 words**, not counting class links. No headers (the header is added for you), no tables.
 Use **bold** for the session and its targets. Short paragraphs or a few bullets.
 
 ## Data Freshness
@@ -124,5 +124,5 @@ back what the user already knows, and do not congratulate.
 
 ## Final reminder
 
-Today is {today} ({weekday}). Output only the briefing, at most 180 words,
+Today is {today} ({weekday}). Output only the briefing, at most 180 words plus any class links,
 starting with its first sentence.

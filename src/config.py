@@ -305,7 +305,8 @@ BRIEFING_LATE_LIMIT_MIN.
 BRIEFING_MAX_WORDS: int = 230
 """Mechanical word ceiling the verifier enforces on a briefing.
 
-The prompt asks for at most 180 words. The ceiling sits above that so a
+The prompt asks for at most 180 words, not counting the linked Peloton classes,
+which the check also leaves out. The ceiling sits above that so a
 briefing a few words over its target is not rejected for length alone, the same
 margin the nudge check keeps over its 80-word target.
 """

@@ -33,6 +33,10 @@ from llm_context import load_prompt_text
 
 CallLLM = Callable[..., LLMResult]
 
+# The briefing's linked class list is outside its word limit: a markdown link
+# is the class picker's output, not prose the reader has to get through.
+_MARKDOWN_LINK = re.compile(r"\[[^\]]*\]\([^)]*\)")
+
 logger = logging.getLogger(__name__)
 
 VerificationKind = Literal["insights", "coach", "nudge", "briefing"]
@@ -555,13 +559,14 @@ def deterministic_verification_issues(
                 correction="Cut to one compact observation or action under 80 words.",
             )
         )
-    if kind == "briefing" and len(draft.split()) > BRIEFING_MAX_WORDS:
+    briefing_words = len(_MARKDOWN_LINK.sub("", draft).split())
+    if kind == "briefing" and briefing_words > BRIEFING_MAX_WORDS:
         issues.append(
             VerificationIssue(
                 severity="major",
                 quote=draft[:120],
                 problem=(
-                    f"The briefing is {len(draft.split())} words, over the "
+                    f"The briefing is {briefing_words} words, over the "
                     f"{BRIEFING_MAX_WORDS}-word ceiling for a morning message."
                 ),
                 correction=(

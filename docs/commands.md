@@ -10,6 +10,7 @@ uv run python main.py insights            # personalised weekly report via LLM
 uv run python main.py coach               # coaching review with plan/goal proposals
 uv run python main.py nudge               # short reactive nudge
 uv run python main.py briefing            # today's morning briefing (--no-telegram to print only)
+uv run python main.py briefing --no-telegram --date 2026-11-02 # rehearse another morning
 uv run python main.py context             # show context files and their status
 uv run python main.py setup               # create .env bootstrap files
 uv run python main.py doctor              # check local setup readiness

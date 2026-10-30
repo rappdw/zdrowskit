@@ -231,6 +231,15 @@ class TestVerifierLengthCheck:
 
         assert deterministic_verification_issues("briefing", draft) == []
 
+    def test_class_links_do_not_count(self) -> None:
+        prose = " ".join(["word"] * (BRIEFING_MAX_WORDS - 5))
+        links = "\n".join(
+            f"- [30 min Intervals Run {i} — Marcel Maurer](https://x.test/{i})"
+            for i in range(5)
+        )
+
+        assert deterministic_verification_issues("briefing", f"{prose}\n{links}") == []
+
 
 def _llm_result(text: str) -> LLMResult:
     return LLMResult(
@@ -268,6 +277,8 @@ def _tool_call_result(name: str) -> LLMResult:
 
 
 class TestCmdBriefing:
+    build_kwargs: dict
+
     def _run(
         self,
         in_memory_db: sqlite3.Connection,
@@ -278,6 +289,7 @@ class TestCmdBriefing:
         telegram: bool = True,
         peloton_tokens_path: Path | None = None,
         search_result: str | None = None,
+        briefing_date: date | None = None,
         monkeypatch: pytest.MonkeyPatch,
     ) -> tuple[CommandResult, MagicMock]:
         monkeypatch.setattr("cmd_llm_common.ENABLE_LLM_VERIFICATION", True)
@@ -294,7 +306,9 @@ class TestCmdBriefing:
             telegram_id=123,
             reports_dir=tmp_path / "Reports",
             peloton_tokens_path=peloton_tokens_path,
+            date=briefing_date,
         )
+        self.build_kwargs = {}
         replies = [_llm_result("Easy day.")]
         if search_result is not None:
             replies.insert(0, _tool_call_result("find_peloton_classes"))
@@ -319,10 +333,13 @@ class TestCmdBriefing:
             ),
             patch(
                 "cmd_briefing.build_messages",
-                return_value=[
-                    {"role": "system", "content": "s"},
-                    {"role": "user", "content": "u"},
-                ],
+                side_effect=lambda *a, **kw: (
+                    self.build_kwargs.update(kw)
+                    or [
+                        {"role": "system", "content": "s"},
+                        {"role": "user", "content": "u"},
+                    ]
+                ),
             ),
             patch("cmd_briefing.call_llm", side_effect=replies) as call,
             patch("tools.run_sql_tool", return_value=[{"type": "function"}]),
@@ -375,6 +392,22 @@ class TestCmdBriefing:
 
         send.assert_not_called()
         assert result.telegram_message_id is None
+
+    def test_date_rehearses_another_morning(
+        self, in_memory_db, tmp_path, monkeypatch
+    ) -> None:
+        monday = FRIDAY + timedelta(days=3)
+        result, _ = self._run(
+            in_memory_db,
+            tmp_path,
+            telegram=False,
+            briefing_date=monday,
+            monkeypatch=monkeypatch,
+        )
+
+        assert result.text.startswith("**☀️ Morning briefing — Mon 2 Nov**")
+        assert self.build_kwargs["today"] == monday
+        assert (tmp_path / "Reports" / "briefing_2026-11-02.md").exists()
 
     def test_class_search_offered_only_when_logged_in(
         self, in_memory_db, tmp_path, monkeypatch

@@ -435,14 +435,14 @@ What can be changed:
 A morning message sent before training: how yesterday went against the plan,
 readiness from last night's sleep, HRV and resting heart rate against your own
 recent values, today's session from `strategy.md` (the dated training block
-when it covers today, otherwise the weekly plan), and one Peloton class for
+when it covers today, otherwise the weekly plan), and Peloton classes for
 that session, matching the languages and instructors named in `me.md`. On
 interval days it states the reps and target speeds; the class only supplies
 the music.
 
 - **Logged in to Peloton** (`main.py peloton login`), it searches Peloton's
-  on-demand catalog for the session and links one class you have not taken;
-  the link opens the class in the Peloton app. The password is sent to
+  on-demand catalog for the session and lists three to five classes you have
+  not taken, best fit first; each link opens the class in the Peloton app. The password is sent to
   Peloton once and not stored; only tokens are kept, in the profile's
   `peloton_tokens.json` (owner-only, git-ignored), and they renew themselves.
   `peloton status` checks the login, `peloton logout` revokes it.
@@ -457,7 +457,9 @@ without notice; the described class is the fallback when it does.
 It is **off until enabled**: `/notify turn on the daily briefing`. The time is
 `daily_briefing.time`, and `/notify` or `notify show` prints it. `/briefing`
 sends one at any time; the CLI equivalent is `main.py briefing`, and
-`main.py briefing --no-telegram` prints it without sending.
+`main.py briefing --no-telegram` prints it without sending. Add
+`--date YYYY-MM-DD` to rehearse another morning: the session and class search
+follow that date, while the health data stays as of now.
 
 - **Fixed time, not data-driven.** It goes out at the set time whatever has
   synced, because it has to arrive before the session. The daemon checks every
