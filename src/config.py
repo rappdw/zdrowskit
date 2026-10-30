@@ -274,6 +274,42 @@ Ten is the existing product boundary between an overnight sync still being
 plausibly pending and a night the reports should treat as absent. It is separate
 from data-health staleness so either policy can change without moving the other.
 """
+
+DAILY_BRIEFING_TIME_HHMM: str = "05:45"
+"""Default local send time for the daily morning briefing.
+
+Chosen by the operator for a training block whose sessions start between 06:00
+and 07:00: the briefing has to land before the session, whatever the sync state.
+A fixed time was preferred over waiting for last night's sleep to arrive, so the
+briefing labels missing overnight data instead of delaying. Per-profile
+overrides live in notification prefs (`daily_briefing.time`).
+"""
+
+BRIEFING_LATE_LIMIT_MIN: int = 120
+"""Minutes after the scheduled time past which a missed briefing is dropped.
+
+A morning plan arriving in the afternoon is noise: the session it prescribes
+has usually happened or been skipped. Two hours covers a daemon restart or a
+short outage around the send time while still landing in the morning.
+"""
+
+BRIEFING_RETRY_INTERVAL_MIN: int = 10
+"""Minutes between attempts after a transient briefing failure.
+
+The briefing check ticks every minute, so without spacing the whole
+MAX_REPORT_ATTEMPTS_PER_DAY budget would burn in three minutes of one outage.
+Ten minutes spreads three attempts across twenty minutes, still well inside
+BRIEFING_LATE_LIMIT_MIN.
+"""
+
+BRIEFING_MAX_WORDS: int = 230
+"""Mechanical word ceiling the verifier enforces on a briefing.
+
+The prompt asks for at most 180 words. The ceiling sits above that so a
+briefing a few words over its target is not rejected for length alone, the same
+margin the nudge check keeps over its 80-word target.
+"""
+
 DATA_HEALTH_SPLIT_AFTER_H: float = 6
 """Hours of uploads arriving without importing before the profile is warned.
 
@@ -1082,6 +1118,12 @@ MAX_TOOL_ITERATIONS_NUDGE: int = 5
 """Maximum tool-call loop iterations for nudges. Nudges are async, but should
 still stay focused on one small actionable observation."""
 
+MAX_TOOL_ITERATIONS_BRIEFING: int = 5
+"""Maximum tool-call loop iterations for the daily briefing. The prompt already
+carries the week, recent days and data freshness; a query is for the 5K
+trajectory or an older comparison, so the nudge budget is enough."""
+
+
 MAX_TOKENS_DEFAULT: int = _env_int("ZDROWSKIT_MAX_TOKENS_DEFAULT", 4096)
 """Default output token budget for uncategorised LLM calls."""
 
@@ -1112,6 +1154,11 @@ for chart-generating answers."""
 MAX_TOKENS_NUDGE: int = _env_int("ZDROWSKIT_MAX_TOKENS_NUDGE", 4096)
 """Output token budget for nudges. Nudges should be short, but tool-repair
 turns need enough room to finish cleanly."""
+
+MAX_TOKENS_BRIEFING: int = _env_int("ZDROWSKIT_MAX_TOKENS_BRIEFING", 4096)
+"""Output token budget for the daily briefing. The text is a few short
+paragraphs; the budget matches nudges so tool-repair turns can finish."""
+
 
 MAX_TOKENS_NOTIFY: int = _env_int("ZDROWSKIT_MAX_TOKENS_NOTIFY", 512)
 """Output token budget for /notify preference interpretation."""
@@ -1445,6 +1492,10 @@ VERIFY_COACH: bool = _env_bool("ZDROWSKIT_VERIFY_COACH", True)
 VERIFY_NUDGE: bool = _env_bool("ZDROWSKIT_VERIFY_NUDGE", True)
 """When LLM verification is enabled, verify nudges before sending."""
 
+VERIFY_BRIEFING: bool = _env_bool("ZDROWSKIT_VERIFY_BRIEFING", True)
+"""When LLM verification is enabled, verify the daily briefing before sending."""
+
+
 VERIFICATION_MODEL: str = os.environ.get(
     "ZDROWSKIT_VERIFICATION_MODEL",
     PRIMARY_FLASH_MODEL,
@@ -1509,6 +1560,15 @@ MIN_NUDGE_INTERVAL_S: int = 3 * 60 * 60
 
 SCHEDULED_CHECK_INTERVAL_S: int = 30 * 60
 """How often the scheduled-check loop wakes to evaluate report cadence."""
+
+BRIEFING_CHECK_INTERVAL_S: int = 60
+"""How often the scheduler checks whether the daily briefing is due.
+
+SCHEDULED_CHECK_INTERVAL_S is 30 minutes, which could deliver a 05:45 briefing
+at 06:15, after a 06:00 session has started. The check is a clock comparison
+plus a prefs read, so once a minute costs nothing.
+"""
+
 
 GOOGLE_DRIVE_POLL_INTERVAL_S: int = _env_int(
     "ZDROWSKIT_GOOGLE_DRIVE_POLL_INTERVAL_S", 5 * 60

@@ -25,6 +25,7 @@ logger = logging.getLogger(__name__)
 
 CATEGORIES = (
     "nudge",
+    "briefing",
     "import",
     "ingest",
     "notify",

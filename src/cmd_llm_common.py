@@ -11,6 +11,7 @@ from typing import Any, NoReturn
 from config import (
     ENABLE_LLM_VERIFICATION,
     MAX_VERIFICATION_REVISIONS,
+    VERIFY_BRIEFING,
     VERIFY_COACH,
     VERIFY_INSIGHTS,
     VERIFY_NUDGE,
@@ -112,6 +113,7 @@ def _verification_enabled(kind: VerificationKind) -> bool:
         "insights": VERIFY_INSIGHTS,
         "coach": VERIFY_COACH,
         "nudge": VERIFY_NUDGE,
+        "briefing": VERIFY_BRIEFING,
     }[kind]
 
 

@@ -34,6 +34,7 @@ from config import (
     GOOGLE_DRIVE_POLL_INTERVAL_S,
     GOOGLE_DRIVE_SERVICE_ACCOUNT,
     HEALTH_DEBOUNCE_S,
+    BRIEFING_CHECK_INTERVAL_S,
     HTTP_INGEST_SWEEP_INTERVAL_S,
     LOCK_FILE,
     LOG_FILE,
@@ -388,6 +389,7 @@ class ProfileRuntime:
             value_type="int",
         )
         from daemon_add_flow import AddFlowHandler
+        from daemon_briefing_flow import BriefingFlow
         from daemon_drive import GoogleDrivePollHandler
         from daemon_coach_flow import CoachScheduleFlow
         from daemon_model_flow import ModelFlowHandler
@@ -399,6 +401,7 @@ class ProfileRuntime:
         self._notify_flow = NotifyFlowHandler(self)
         self._model_flow = ModelFlowHandler(self)
         self._coach_flow = CoachScheduleFlow(self)
+        self._briefing_flow = BriefingFlow(self)
         self._ingest_health = IngestHealthHandler(self)
         self._chat = TelegramChatHandler(self)
         self._runners = DaemonRunnerHandler(self)
@@ -441,6 +444,7 @@ class ProfileRuntime:
         """Build a Telegram-friendly external status summary."""
         from notification_prefs import (
             active_temporary_mutes,
+            briefing_schedule_text,
             effective_notification_prefs,
             schedule_text,
         )
@@ -479,6 +483,7 @@ class ProfileRuntime:
             ),
             f"- Weekly report: {schedule_text(effective, 'weekly_insights')}",
             f"- Weekly coach review: {schedule_text(effective, 'weekly_coach')}",
+            f"- Daily briefing: {briefing_schedule_text(effective)}",
         ]
 
         telegram = self._chat.telegram_status()
@@ -800,6 +805,10 @@ class ProfileRuntime:
         """Delegate to the runner handler."""
         self._runners._run_coach(**kwargs)
 
+    def _run_briefing(self, *, manual: bool) -> bool:
+        """Delegate to the briefing flow."""
+        return self._briefing_flow.run(manual=manual)
+
     def _run_import(self) -> "ImportResult | None":
         """Delegate to the runner handler."""
         return self._runners._run_import()
@@ -1097,6 +1106,14 @@ class ProfileRuntime:
             close_and_announce(self.db, self._poller, self.units)
         except Exception:
             logger.warning("Challenge housekeeping failed", exc_info=True)
+
+    def _briefing_check_once(self) -> None:
+        """Send today's briefing if it is due; never raises."""
+        now = datetime.now().astimezone()
+        try:
+            self._briefing_flow.check(now, self._load_notification_prefs(now=now))
+        except Exception:
+            logger.warning("Scheduled briefing check failed", exc_info=True)
 
     def _scheduled_check_once(self) -> None:
         """Run one profile-scoped scheduled report and queue check."""
@@ -1461,6 +1478,7 @@ class Daemon:
     def _scheduler_loop(self) -> None:
         """Queue scheduled, HTTP sweep, and Drive work on each profile's worker."""
         next_scheduled = 0.0
+        next_briefing = 0.0
         next_http_sweep = time.monotonic() + HTTP_INGEST_SWEEP_INTERVAL_S
         next_drive = {name: 0.0 for name in self.runtimes}
         drive_initial = set(self.runtimes)
@@ -1470,6 +1488,10 @@ class Daemon:
                 for runtime in self.runtimes.values():
                     self._submit(runtime, runtime._scheduled_check_once)
                 next_scheduled = now + SCHEDULED_CHECK_INTERVAL_S
+            if now >= next_briefing:
+                for runtime in self.runtimes.values():
+                    self._submit(runtime, runtime._briefing_check_once)
+                next_briefing = now + BRIEFING_CHECK_INTERVAL_S
             if now >= next_http_sweep:
                 # ``start`` already swept, hence the offset initial deadline.
                 self._http.sweep()

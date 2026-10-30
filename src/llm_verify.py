@@ -19,6 +19,7 @@ from pydantic import BaseModel, Field, ValidationError, field_validator, model_v
 
 from charts import strip_charts
 from config import (
+    BRIEFING_MAX_WORDS,
     INSIGHTS_MAX_VISIBLE_CHARS,
     MAX_TOKENS_VERIFICATION,
     MAX_TOKENS_VERIFICATION_REWRITE,
@@ -34,19 +35,21 @@ CallLLM = Callable[..., LLMResult]
 
 logger = logging.getLogger(__name__)
 
-VerificationKind = Literal["insights", "coach", "nudge"]
+VerificationKind = Literal["insights", "coach", "nudge", "briefing"]
 Verdict = Literal["pass", "revise", "fail"]
 
 _EVENT_CATEGORY: dict[VerificationKind, str] = {
     "insights": "insights",
     "coach": "coach",
     "nudge": "nudge",
+    "briefing": "briefing",
 }
 
 _PROMPT_BY_KIND: dict[VerificationKind, str] = {
     "insights": "verify_insights_prompt.md",
     "coach": "verify_coach_prompt.md",
     "nudge": "verify_nudge_prompt.md",
+    "briefing": "verify_briefing_prompt.md",
 }
 
 
@@ -550,6 +553,21 @@ def deterministic_verification_issues(
                 quote=draft[:120],
                 problem="The nudge is too long for a short notification.",
                 correction="Cut to one compact observation or action under 80 words.",
+            )
+        )
+    if kind == "briefing" and len(draft.split()) > BRIEFING_MAX_WORDS:
+        issues.append(
+            VerificationIssue(
+                severity="major",
+                quote=draft[:120],
+                problem=(
+                    f"The briefing is {len(draft.split())} words, over the "
+                    f"{BRIEFING_MAX_WORDS}-word ceiling for a morning message."
+                ),
+                correction=(
+                    "Cut to readiness, today's session and the class, one short "
+                    "paragraph each."
+                ),
             )
         )
     return issues

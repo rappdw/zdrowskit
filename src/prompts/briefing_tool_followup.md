@@ -1,0 +1,1 @@
+Use the tool results above to write the morning briefing now. Output only the briefing (at most 180 words), starting with its first sentence. Do not mention checking or querying data. No headers; the app adds them.

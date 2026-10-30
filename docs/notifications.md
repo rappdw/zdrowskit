@@ -9,6 +9,7 @@ do not call an LLM.
 | **Insights** | Full weekly report | Scheduled, default Monday 10:00, or manual `/review` | Weekly when scheduled; manual on demand | A single Telegram message | `run_sql` | Exactly 1 `<chart>`, skipped when it would mislead |
 | **Memory** | Decides what carries forward from an insights report | After every scheduled or manual insights report | Same as insights | A couple of bullets | none | Extracted bullets stored under the week in `history.md`; never sent to the user |
 | **Coach** | Strategy review, only when proposals exist | Scheduled Sunday evening (default 19:00), or manual `/coach` | Weekly when scheduled; manual on demand | A few paragraphs | `run_sql`, `update_context` for `strategy` only | `SKIP` if no changes warranted, unless the goal check requires a review; bundled message with inline Accept/Reject buttons per edit |
+| **Daily briefing** | Morning readiness, today's session and a class to look for | Scheduled daily (05:45 by default, off until enabled), or manual `/briefing` | At most once a day when scheduled; manual on demand | A few short paragraphs | `run_sql` | Never skips; says which overnight readings have not synced yet |
 | **Nudge** | Short reactive next-action nudge | Data sync, file edit | Up to 2/day by default | One or two sentences | `run_sql` | `SKIP` if nothing changes; text only, no chart |
 | **Standout picker** | Checks a qualified rare fact against explicit recording contradictions in your journal | A data-sync nudge, only when the triggering import changed a qualifying workout | At most one announcement per `STANDOUT_COOLDOWN_DAYS` | None — picks a key, writes nothing | none | Normally picks; the sentence was computed, not written |
 | **Targets** | Turns the prose goals in `strategy.md` into countable weekly targets | First notification of a new week, or an edit to the goal sections | Cached per week and goal text, including empty results | None — stored, not sent | none | Strict JSON against a closed metric vocabulary; drives the progress strip |
@@ -398,6 +399,7 @@ Examples:
 - `/notify no nudges before 11am`
 - `/notify send weekly insights on Tuesday at 8`
 - `/notify move the coach review to 8pm`
+- `/notify turn on the daily briefing at 5:45`
 - `/notify mute sync alerts for a week`
 - `/notify only warn me about sync after two days`
 - `/notify mute nudges today`
@@ -419,6 +421,7 @@ How it works:
 
 What can be changed:
 
+- daily briefing on/off and its time
 - nudges on/off
 - nudge earliest send time
 - maximum nudges per day (1–6)
@@ -426,6 +429,42 @@ What can be changed:
 - sync alerts on/off, missing-metric days, and stalled-import hours
 - temporary mutes for all notifications or one notification type
 - reset one setting or everything back to built-in defaults
+
+## The Daily Briefing
+
+A morning message sent before training: how yesterday went against the plan,
+readiness from last night's sleep, HRV and resting heart rate against your own
+recent values, today's session from `strategy.md` (the dated training block
+when it covers today, otherwise the weekly plan), and one Peloton class to look
+for — discipline, type, length and the languages and instructors named in
+`me.md`. On interval days it states the reps and target speeds; the class only
+supplies the music. It does not name a specific class: it cannot see the
+catalogue.
+
+It is **off until enabled**: `/notify turn on the daily briefing`. The time is
+`daily_briefing.time`, and `/notify` or `notify show` prints it. `/briefing`
+sends one at any time; the CLI equivalent is `main.py briefing`, and
+`main.py briefing --no-telegram` prints it without sending.
+
+- **Fixed time, not data-driven.** It goes out at the set time whatever has
+  synced, because it has to arrive before the session. The daemon checks every
+  `BRIEFING_CHECK_INTERVAL_S` rather than on the half-hourly report tick.
+- **Missing overnight data is labelled.** The briefing is told, from the
+  database, whether last night's sleep and this morning's HRV and resting heart
+  rate have synced. When one has not, it says so and names the date of any
+  older reading it uses. Missing data is never read as poor recovery, and the
+  verifier rejects a draft that passes an old reading off as today's.
+- **It counts as today's prescription.** A delivered briefing joins the recent
+  nudges every nudge reads, so the day's first nudge does not restate the
+  session. It does not use a nudge slot or delay the next nudge.
+- **Missed and failed sends.** A briefing missed by more than
+  `BRIEFING_LATE_LIMIT_MIN` (a daemon that was down at dawn) is dropped rather
+  than sent in the afternoon. A transient failure, including Telegram not
+  accepting the message, is retried every `BRIEFING_RETRY_INTERVAL_MIN` up to
+  `MAX_REPORT_ATTEMPTS_PER_DAY` times; a verifier refusal ends the day and you
+  are told why.
+- **Model.** It uses the nudge route (`main.py models`) and is verified like
+  nudges (`VERIFY_BRIEFING`).
 
 ## What Triggers Nudge Attempts
 
@@ -549,7 +588,10 @@ The coaching and content LLMs share enough recent output to avoid redundancy:
 - **Memory** reads the existing history so it does not store the same thread
   twice.
 - **Coach** sees recent nudges sent.
-- **Nudge** sees recent nudges + last coach review summary.
+- **Nudge** sees recent nudges + last coach review summary. Recent nudges
+  include today's daily briefing.
+- **Daily briefing** sees recent nudges, earlier briefings and the last coach
+  review summary.
 - **Chat** sees recent nudges + last coach review summary.
 - "Recent nudges" means every nudge delivered in the last
   `RECENT_NUDGES_WINDOW_DAYS`, never fewer than `RECENT_NUDGES_MIN` however old

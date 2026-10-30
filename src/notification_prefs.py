@@ -7,6 +7,8 @@ Public API:
     effective_notification_prefs — merge defaults with overrides.
     evaluate_nudge_delivery     — decide whether a nudge may send now.
     evaluate_report_delivery    — decide whether a scheduled report may send now.
+    evaluate_briefing_delivery  — decide whether the daily briefing may send now.
+    daily_briefing_due          — decide whether today's briefing is due.
     apply_notification_changes  — apply a validated proposal to prefs data.
     format_notification_summary — render a human-readable prefs summary.
 """
@@ -21,6 +23,8 @@ from pathlib import Path
 from typing import Any
 
 from config import (
+    BRIEFING_LATE_LIMIT_MIN,
+    DAILY_BRIEFING_TIME_HHMM,
     DATA_HEALTH_QUIET_END_HHMM,
     DATA_HEALTH_QUIET_START_HHMM,
     DATA_HEALTH_SPLIT_AFTER_H,
@@ -50,6 +54,8 @@ SETTABLE_PATHS = {
     "weekly_coach.enabled",
     "weekly_coach.weekday",
     "weekly_coach.time",
+    "daily_briefing.enabled",
+    "daily_briefing.time",
     "data_health.enabled",
     "data_health.stale_after_days",
     "data_health.split_after_h",
@@ -58,10 +64,18 @@ RESETTABLE_PATHS = SETTABLE_PATHS | {
     "nudges",
     "weekly_insights",
     "weekly_coach",
+    "daily_briefing",
     "data_health",
     "all",
 }
-MUTE_TARGETS = {"all", "nudges", "weekly_insights", "weekly_coach", "data_health"}
+MUTE_TARGETS = {
+    "all",
+    "nudges",
+    "weekly_insights",
+    "weekly_coach",
+    "daily_briefing",
+    "data_health",
+}
 SCHEDULED_REPORTS = ("weekly_insights", "weekly_coach")
 MIN_NUDGES_PER_DAY = 1
 MAX_REASONABLE_NUDGES_PER_DAY = 6
@@ -93,6 +107,12 @@ _DEFAULT_EFFECTIVE: dict[str, dict[str, Any]] = {
         "enabled": True,
         "weekday": "sunday",
         "time": "19:00",
+    },
+    # Opt-in: a new daily message at dawn is not something a hosted profile
+    # should start receiving because the operator upgraded.
+    "daily_briefing": {
+        "enabled": False,
+        "time": DAILY_BRIEFING_TIME_HHMM,
     },
     "data_health": {
         "enabled": True,
@@ -373,6 +393,62 @@ def evaluate_report_delivery(
     return {"status": "allowed", "reason": "enabled"}
 
 
+def evaluate_briefing_delivery(
+    prefs: dict[str, Any],
+    *,
+    now: datetime | None = None,
+) -> dict[str, str]:
+    """Decide whether the daily briefing may send now.
+
+    Args:
+        prefs: Raw notification preferences.
+        now: Override for the current time.
+
+    Returns:
+        A decision dict with ``status`` and ``reason``, matching the other
+        delivery evaluators.
+    """
+    now = now or datetime.now().astimezone()
+    effective = effective_notification_prefs(prefs)
+    muted = _target_is_muted("daily_briefing", active_temporary_mutes(prefs, now=now))
+    if muted:
+        return {
+            "status": "suppressed",
+            "reason": "temporary_mute",
+            "until": muted["expires_at"],
+        }
+    if not effective["daily_briefing"]["enabled"]:
+        return {"status": "suppressed", "reason": "disabled"}
+    return {"status": "allowed", "reason": "enabled"}
+
+
+def daily_briefing_due(
+    prefs: dict[str, Any],
+    *,
+    now: datetime | None = None,
+) -> bool:
+    """Return True when today's briefing time has passed and is not yet stale.
+
+    The window closes ``BRIEFING_LATE_LIMIT_MIN`` after the configured time, so
+    a daemon that was down at dawn does not send a morning plan at lunchtime.
+
+    Args:
+        prefs: Raw notification preferences.
+        now: Override for the current time.
+
+    Returns:
+        Whether the scheduled briefing should be attempted now.
+    """
+    now = now or datetime.now().astimezone()
+    scheduled = _parse_hhmm(
+        effective_notification_prefs(prefs)["daily_briefing"]["time"]
+    )
+    start = now.replace(
+        hour=scheduled.hour, minute=scheduled.minute, second=0, microsecond=0
+    )
+    return start <= now < start + timedelta(minutes=BRIEFING_LATE_LIMIT_MIN)
+
+
 def evaluate_data_health_delivery(
     prefs: dict[str, Any],
     *,
@@ -591,6 +667,7 @@ def _mute_label(target: str) -> str:
         "nudges": "Nudges",
         "weekly_insights": "Weekly insights",
         "weekly_coach": "Weekly coach review",
+        "daily_briefing": "Daily briefing",
         "data_health": "Sync alerts",
     }
     return labels.get(target, target)
@@ -601,6 +678,13 @@ def schedule_text(effective: dict[str, dict[str, Any]], section: str) -> str:
     report = effective[section]
     state = "on" if report["enabled"] else "off"
     return f"{report['weekday'].title()} {report['time']} ({state})"
+
+
+def briefing_schedule_text(effective: dict[str, dict[str, Any]]) -> str:
+    """Return ``daily 05:45 (off)`` for the daily briefing section."""
+    briefing = effective["daily_briefing"]
+    state = "on" if briefing["enabled"] else "off"
+    return f"daily {briefing['time']} ({state})"
 
 
 def format_notification_summary(
@@ -622,6 +706,7 @@ def format_notification_summary(
         f"- Max nudges per day: {effective['nudges']['max_per_day']}",
         f"- Weekly insights: {schedule_text(effective, 'weekly_insights')}",
         f"- Weekly coach review: {schedule_text(effective, 'weekly_coach')}",
+        f"- Daily briefing: {briefing_schedule_text(effective)}",
         (
             "- Sync alerts: "
             f"{'on' if effective['data_health']['enabled'] else 'off'}"
@@ -644,6 +729,7 @@ def format_notification_summary(
                 "Examples:",
                 "- /notify no nudges before 11am",
                 "- /notify send weekly insights on Tuesday at 8",
+                "- /notify turn on the daily briefing at 5:45",
                 "- /notify mute nudges today",
                 "- /notify mute all notifications until tomorrow 11am",
                 "- /notify bring weekly insights back to default",
@@ -705,6 +791,13 @@ def format_proposed_changes(
                 name, schedule_text(before, section), schedule_text(after, section)
             )
         )
+    lines.append(
+        _section_line(
+            "Daily briefing",
+            briefing_schedule_text(before),
+            briefing_schedule_text(after),
+        )
+    )
 
     if after_mutes != before_mutes:
         if after_mutes:

@@ -49,6 +49,8 @@ again.
 ## Supported capabilities
 - show current notification settings
 - set a custom time/day for the weekly insights report
+- turn the daily morning briefing on or off and set its time (it runs every
+  day; there is no weekday to set)
 - set the earliest time nudges may send
 - set the maximum nudges per day
 - enable a target
@@ -62,6 +64,7 @@ again.
 - `nudges`
 - `weekly_insights`
 - `weekly_coach` (the Sunday-evening coach review that proposes plan changes and challenges)
+- `daily_briefing` (the morning briefing: readiness, today's session and a class suggestion; off until enabled)
 - `data_health`
 - `nudges.earliest_time`
 - `nudges.max_per_day`
@@ -69,6 +72,7 @@ again.
 - `weekly_insights.time`
 - `weekly_coach.weekday`
 - `weekly_coach.time`
+- `daily_briefing.time`
 - `data_health.stale_after_days`
 - `data_health.split_after_h`
 
@@ -82,18 +86,22 @@ Each item in `changes` must be one of:
 - `{{"action":"set","path":"weekly_insights.time","value":"08:00"}}`
 - `{{"action":"set","path":"weekly_coach.enabled","value":false}}`
 - `{{"action":"set","path":"weekly_coach.time","value":"20:00"}}`
+- `{{"action":"set","path":"daily_briefing.enabled","value":true}}`
+- `{{"action":"set","path":"daily_briefing.time","value":"05:45"}}`
 - `{{"action":"set","path":"data_health.enabled","value":false}}`
 - `{{"action":"set","path":"data_health.stale_after_days","value":2}}`
 - `{{"action":"set","path":"data_health.split_after_h","value":12}}`
 - `{{"action":"reset","path":"nudges"}}`
 - `{{"action":"reset","path":"weekly_insights"}}`
 - `{{"action":"reset","path":"weekly_coach"}}`
+- `{{"action":"reset","path":"daily_briefing"}}`
 - `{{"action":"reset","path":"data_health"}}`
 - `{{"action":"reset","path":"all"}}`
 - `{{"action":"reset_all"}}`
 - `{{"action":"mute_until","target":"all","expires_at":"2026-04-05T23:59:00+01:00","source_text":"mute all notifications today"}}`
 - `{{"action":"mute_until","target":"nudges","expires_at":"2026-04-05T23:59:00+01:00","source_text":"mute nudges today"}}`
 - `{{"action":"mute_until","target":"weekly_insights","expires_at":"2026-04-08T23:59:00+01:00","source_text":"pause weekly insights this week"}}`
+- `{{"action":"mute_until","target":"daily_briefing","expires_at":"2026-04-08T23:59:00+01:00","source_text":"no morning briefing for the next two days"}}`
 - `{{"action":"mute_until","target":"data_health","expires_at":"2026-04-12T23:59:00+01:00","source_text":"mute sync alerts for a week"}}`
 
 `changes` is empty (`[]`) for `intent: "show"` or `status: "needs_clarification"`. `clarification_question` is set only when `status: "needs_clarification"`.
