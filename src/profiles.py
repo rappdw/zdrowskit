@@ -105,6 +105,11 @@ class Profile:
         return self.root / "daemon_state.json"
 
     @property
+    def peloton_tokens(self) -> Path:
+        """Return this profile's Peloton login tokens path (mode 0600)."""
+        return self.root / "peloton_tokens.json"
+
+    @property
     def notification_prefs(self) -> Path:
         """Return this profile's notification preferences path."""
         return self.root / "notification_prefs.json"

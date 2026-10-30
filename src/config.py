@@ -1121,7 +1121,33 @@ still stay focused on one small actionable observation."""
 MAX_TOOL_ITERATIONS_BRIEFING: int = 5
 """Maximum tool-call loop iterations for the daily briefing. The prompt already
 carries the week, recent days and data freshness; a query is for the 5K
-trajectory or an older comparison, so the nudge budget is enough."""
+trajectory or an older comparison, and one or two Peloton class searches, so
+the nudge budget is enough."""
+
+PELOTON_REQUEST_TIMEOUT_S: int = 20
+"""Seconds to wait for one Peloton API request.
+
+The briefing has a fixed send time and the class search is optional, so a slow
+Peloton must cost seconds, not the briefing. Catalog searches answered in well
+under a second during the 2026-10-30 spike."""
+
+PELOTON_TOKEN_REFRESH_MARGIN_S: int = 300
+"""Refresh the Peloton access token when it has less than this left.
+
+Access tokens last 48 hours. Five minutes covers the longest briefing run, so a
+token never expires between the check and the last search."""
+
+PELOTON_CLASS_RESULTS: int = 5
+"""How many classes one search hands the briefing writer.
+
+Enough to choose among by instructor and length, small enough that the tool
+result does not crowd the prompt. Searches already exclude taken classes."""
+
+PELOTON_MAX_INSTRUCTORS: int = 2
+"""Most instructors one class search may name.
+
+Each instructor is a separate catalog request (combining instructor filters in
+one request was not verified), and the briefing names at most two."""
 
 
 MAX_TOKENS_DEFAULT: int = _env_int("ZDROWSKIT_MAX_TOKENS_DEFAULT", 4096)

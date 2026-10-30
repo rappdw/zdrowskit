@@ -80,6 +80,9 @@ Examples:
 
     uv run python main.py briefing --no-telegram
         Write today's morning briefing and print it without sending it.
+
+    uv run python main.py peloton login
+        Log the profile in to Peloton so the briefing can pick a class.
 """
 
 from __future__ import annotations
@@ -103,6 +106,7 @@ from cmd_ingest import cmd_ingest
 from cmd_llm_log import cmd_llm_log
 from cmd_models import cmd_models
 from cmd_nudge import cmd_nudge
+from cmd_peloton import cmd_peloton
 from cmd_notify import RESET_TARGETS as NOTIFY_RESET_TARGETS
 from cmd_notify import cmd_notify
 from cmd_standouts import cmd_standouts
@@ -624,6 +628,23 @@ def main() -> None:
     p_profile_source.add_argument("name")
     p_profile_source.add_argument("source", choices=("http", "local", "google-drive"))
 
+    # Peloton login for the briefing's class search
+    p_peloton = sub.add_parser(
+        "peloton", help="Log in to Peloton so the briefing can pick a class"
+    )
+    peloton_sub = p_peloton.add_subparsers(dest="peloton_cmd", required=True)
+    for name, help_text in (
+        ("login", "Log in; the password is sent to Peloton and not stored"),
+        ("status", "Check that the stored login still works"),
+        ("logout", "Revoke the stored login and delete its tokens"),
+    ):
+        p_peloton_cmd = peloton_sub.add_parser(name, help=help_text)
+        p_peloton_cmd.add_argument(
+            "--profile",
+            metavar="NAME",
+            help="Profile name (default: operator profile)",
+        )
+
     # authenticated Auto Export HTTP ingestion
     p_ingest = sub.add_parser("ingest", help="Configure Auto Export HTTP ingestion")
     ingest_sub = p_ingest.add_subparsers(dest="ingest_cmd", required=True)
@@ -661,7 +682,12 @@ def main() -> None:
         "targets",
         "standouts",
     }
-    profile_path_commands = database_commands | {"context", "notify", "models"}
+    profile_path_commands = database_commands | {
+        "context",
+        "notify",
+        "models",
+        "peloton",
+    }
     if args.cmd in profile_path_commands:
         try:
             explicit_db = getattr(args, "db", None) or args.global_db
@@ -690,6 +716,7 @@ def main() -> None:
             args.notification_prefs_path = profile.notification_prefs
             args.model_prefs_path = profile.model_prefs
             args.telegram_id = profile.telegram_id
+            args.peloton_tokens_path = profile.peloton_tokens
             args.units = profile.units
             if args.cmd == "import":
                 args.source = args.source or profile.import_source
@@ -747,6 +774,7 @@ def main() -> None:
         "telegram-setup": cmd_telegram_setup,
         "profile": cmd_profile,
         "ingest": cmd_ingest,
+        "peloton": cmd_peloton,
     }
     try:
         dispatch[args.cmd](args)

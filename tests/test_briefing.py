@@ -10,7 +10,12 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
-from cmd_briefing import BRIEFING_TRIGGER, cmd_briefing, describe_data_freshness
+from cmd_briefing import (
+    BRIEFING_TRIGGER,
+    PELOTON_LOGIN_NOTE,
+    cmd_briefing,
+    describe_data_freshness,
+)
 from cmd_llm_common import CommandResult
 from cmd_notify import RESET_TARGETS, cmd_notify
 from config import (
@@ -239,15 +244,40 @@ def _llm_result(text: str) -> LLMResult:
     )
 
 
+def _tool_call_result(name: str) -> LLMResult:
+    call = SimpleNamespace(
+        id="call-1",
+        function=SimpleNamespace(name=name, arguments='{"discipline": "running"}'),
+    )
+    return LLMResult(
+        text="",
+        model="test-model",
+        input_tokens=1,
+        output_tokens=1,
+        total_tokens=2,
+        latency_s=0.1,
+        llm_call_id=6,
+        tool_calls=[call],
+        raw_message={
+            "role": "assistant",
+            "tool_calls": [
+                {"id": "call-1", "function": {"name": name, "arguments": "{}"}}
+            ],
+        },
+    )
+
+
 class TestCmdBriefing:
-    @staticmethod
     def _run(
+        self,
         in_memory_db: sqlite3.Connection,
         tmp_path: Path,
         *,
         verdict: str = "pass",
         sent_id: int | None = 55,
         telegram: bool = True,
+        peloton_tokens_path: Path | None = None,
+        search_result: str | None = None,
         monkeypatch: pytest.MonkeyPatch,
     ) -> tuple[CommandResult, MagicMock]:
         monkeypatch.setattr("cmd_llm_common.ENABLE_LLM_VERIFICATION", True)
@@ -263,7 +293,17 @@ class TestCmdBriefing:
             telegram=telegram,
             telegram_id=123,
             reports_dir=tmp_path / "Reports",
+            peloton_tokens_path=peloton_tokens_path,
         )
+        replies = [_llm_result("Easy day.")]
+        if search_result is not None:
+            replies.insert(0, _tool_call_result("find_peloton_classes"))
+
+            def fake_execute(search, arguments: dict) -> str:
+                search.auth_failed = search_result == "auth"
+                return '{"error": "describe the class instead."}'
+
+            monkeypatch.setattr("cmd_briefing.PelotonClassSearch.execute", fake_execute)
         with (
             patch(
                 "cmd_briefing.load_context",
@@ -284,14 +324,16 @@ class TestCmdBriefing:
                     {"role": "user", "content": "u"},
                 ],
             ),
-            patch("cmd_briefing.call_llm", return_value=_llm_result("Easy day.")),
+            patch("cmd_briefing.call_llm", side_effect=replies) as call,
             patch("tools.run_sql_tool", return_value=[{"type": "function"}]),
             patch("cmd_briefing.date") as fake_date,
             patch("cmd_briefing.send_telegram", return_value=sent_id) as send,
         ):
             fake_date.today.return_value = FRIDAY
             fake_date.fromisoformat = date.fromisoformat
-            return cmd_briefing(args), send
+            result = cmd_briefing(args)
+            self.last_tools = call.call_args_list[0].kwargs["tools"]
+            return result, send
 
     def test_sends_with_header_and_saves(
         self, in_memory_db, tmp_path, monkeypatch
@@ -334,6 +376,50 @@ class TestCmdBriefing:
         send.assert_not_called()
         assert result.telegram_message_id is None
 
+    def test_class_search_offered_only_when_logged_in(
+        self, in_memory_db, tmp_path, monkeypatch
+    ) -> None:
+        self._run(in_memory_db, tmp_path, monkeypatch=monkeypatch)
+        assert len(self.last_tools) == 1
+
+        tokens = tmp_path / "peloton_tokens.json"
+        tokens.write_text("{}", encoding="utf-8")
+        self._run(
+            in_memory_db,
+            tmp_path,
+            peloton_tokens_path=tokens,
+            monkeypatch=monkeypatch,
+        )
+        assert self.last_tools[-1]["function"]["name"] == "find_peloton_classes"
+
+    def test_refused_login_adds_a_footer(
+        self, in_memory_db, tmp_path, monkeypatch
+    ) -> None:
+        tokens = tmp_path / "peloton_tokens.json"
+        tokens.write_text("{}", encoding="utf-8")
+        result, _ = self._run(
+            in_memory_db,
+            tmp_path,
+            peloton_tokens_path=tokens,
+            search_result="auth",
+            monkeypatch=monkeypatch,
+        )
+
+        assert result.text.endswith(PELOTON_LOGIN_NOTE)
+
+    def test_outage_adds_no_footer(self, in_memory_db, tmp_path, monkeypatch) -> None:
+        tokens = tmp_path / "peloton_tokens.json"
+        tokens.write_text("{}", encoding="utf-8")
+        result, _ = self._run(
+            in_memory_db,
+            tmp_path,
+            peloton_tokens_path=tokens,
+            search_result="outage",
+            monkeypatch=monkeypatch,
+        )
+
+        assert result.text.endswith("Easy day.")
+
 
 def _flow_daemon() -> SimpleNamespace:
     return SimpleNamespace(
@@ -341,7 +427,9 @@ def _flow_daemon() -> SimpleNamespace:
         context_dir=Path("ctx"),
         reports_dir=Path("reports"),
         model_prefs_path=None,
-        profile=SimpleNamespace(telegram_id=1),
+        profile=SimpleNamespace(
+            telegram_id=1, peloton_tokens=Path("peloton_tokens.json")
+        ),
         units="imperial",
         model=None,
         _state={

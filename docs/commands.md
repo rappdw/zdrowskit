@@ -30,6 +30,7 @@ uv run python main.py ingest setup        # tokens + Auto Export configuration
 uv run python main.py ingest setup --funnel # same, plus start Funnel when CLI is ready
 uv run python main.py ingest status       # receiver and upload state
 uv run python main.py ingest token NAME --rotate         # replace a lost token
+uv run python main.py peloton login       # let the briefing pick Peloton classes (also status, logout)
 uv run python src/daemon.py --foreground  # run daemon directly on macOS/Linux
 ```
 
@@ -66,7 +67,7 @@ uv run python -m evals.leaderboard render
 ## Profile Selection
 
 `import`, `report`, `status`, `db`, `insights`, `nudge`, `briefing`, `coach`, `llm-log`,
-`events`, `context`, `notify`, and `models` accept `--profile NAME` and default
+`events`, `context`, `notify`, `models`, and `peloton` accept `--profile NAME` and default
 to the operator profile. The database, context, reports, nudges, notification
 preferences, model preferences, and Telegram destination are derived from
 `profiles.toml`.

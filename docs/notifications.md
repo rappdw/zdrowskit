@@ -9,7 +9,7 @@ do not call an LLM.
 | **Insights** | Full weekly report | Scheduled, default Monday 10:00, or manual `/review` | Weekly when scheduled; manual on demand | A single Telegram message | `run_sql` | Exactly 1 `<chart>`, skipped when it would mislead |
 | **Memory** | Decides what carries forward from an insights report | After every scheduled or manual insights report | Same as insights | A couple of bullets | none | Extracted bullets stored under the week in `history.md`; never sent to the user |
 | **Coach** | Strategy review, only when proposals exist | Scheduled Sunday evening (default 19:00), or manual `/coach` | Weekly when scheduled; manual on demand | A few paragraphs | `run_sql`, `update_context` for `strategy` only | `SKIP` if no changes warranted, unless the goal check requires a review; bundled message with inline Accept/Reject buttons per edit |
-| **Daily briefing** | Morning readiness, today's session and a class to look for | Scheduled daily (05:45 by default, off until enabled), or manual `/briefing` | At most once a day when scheduled; manual on demand | A few short paragraphs | `run_sql` | Never skips; says which overnight readings have not synced yet |
+| **Daily briefing** | Morning readiness, today's session and a class to look for | Scheduled daily (05:45 by default, off until enabled), or manual `/briefing` | At most once a day when scheduled; manual on demand | A few short paragraphs | `run_sql`, `find_peloton_classes` when logged in to Peloton | Never skips; says which overnight readings have not synced yet |
 | **Nudge** | Short reactive next-action nudge | Data sync, file edit | Up to 2/day by default | One or two sentences | `run_sql` | `SKIP` if nothing changes; text only, no chart |
 | **Standout picker** | Checks a qualified rare fact against explicit recording contradictions in your journal | A data-sync nudge, only when the triggering import changed a qualifying workout | At most one announcement per `STANDOUT_COOLDOWN_DAYS` | None — picks a key, writes nothing | none | Normally picks; the sentence was computed, not written |
 | **Targets** | Turns the prose goals in `strategy.md` into countable weekly targets | First notification of a new week, or an edit to the goal sections | Cached per week and goal text, including empty results | None — stored, not sent | none | Strict JSON against a closed metric vocabulary; drives the progress strip |
@@ -435,11 +435,24 @@ What can be changed:
 A morning message sent before training: how yesterday went against the plan,
 readiness from last night's sleep, HRV and resting heart rate against your own
 recent values, today's session from `strategy.md` (the dated training block
-when it covers today, otherwise the weekly plan), and one Peloton class to look
-for — discipline, type, length and the languages and instructors named in
-`me.md`. On interval days it states the reps and target speeds; the class only
-supplies the music. It does not name a specific class: it cannot see the
-catalogue.
+when it covers today, otherwise the weekly plan), and one Peloton class for
+that session, matching the languages and instructors named in `me.md`. On
+interval days it states the reps and target speeds; the class only supplies
+the music.
+
+- **Logged in to Peloton** (`main.py peloton login`), it searches Peloton's
+  on-demand catalog for the session and links one class you have not taken;
+  the link opens the class in the Peloton app. The password is sent to
+  Peloton once and not stored; only tokens are kept, in the profile's
+  `peloton_tokens.json` (owner-only, git-ignored), and they renew themselves.
+  `peloton status` checks the login, `peloton logout` revokes it.
+- **Not logged in**, or when Peloton is unreachable, it describes the class to
+  look for (discipline, type, length, level) without naming one. If Peloton
+  refuses the stored login, the briefing ends with a line saying to run
+  `peloton login` again.
+
+The class search uses Peloton's unofficial web API, which Peloton can change
+without notice; the described class is the fallback when it does.
 
 It is **off until enabled**: `/notify turn on the daily briefing`. The time is
 `daily_briefing.time`, and `/notify` or `notify show` prints it. `/briefing`

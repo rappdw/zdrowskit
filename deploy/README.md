@@ -139,6 +139,11 @@ exists by writing `$ZDROWSKIT_HOME_DIR/profiles/NAME/notification_prefs.json`:
 `zk notify --profile NAME show` confirms it. Data-health alerts stay on; they
 need Telegram, not an LLM.
 
+For Peloton class links in the morning briefing, log the profile in once with
+`zk peloton login --profile NAME`. It prompts for the password, which is not
+stored, and writes tokens into the profile directory, where the running daemon
+reads them; no restart is needed. See `docs/notifications.md`.
+
 ## Backfill
 
 HTTP uploads are capped per request (`docs/http-ingest.md`), and years of

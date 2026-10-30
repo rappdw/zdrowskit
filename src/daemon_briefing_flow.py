@@ -102,6 +102,9 @@ class BriefingFlow:
             reports_dir=daemon.reports_dir,
             model_prefs_path=daemon.model_prefs_path,
             telegram_id=(daemon.profile.telegram_id if daemon.profile else None),
+            peloton_tokens_path=(
+                daemon.profile.peloton_tokens if daemon.profile else None
+            ),
             units=daemon.units,
             model=daemon.model,
             telegram=True,

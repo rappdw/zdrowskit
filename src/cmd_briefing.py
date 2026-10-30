@@ -43,6 +43,7 @@ from llm_health import (
 from llm_health_data import build_llm_data
 from llm_verify import extract_tool_evidence, slim_source_messages
 from notify import send_telegram
+from peloton import PelotonClassSearch, find_classes_tool, has_tokens
 from store import create_llm_trace, open_db
 from units import units_from_args
 
@@ -52,6 +53,12 @@ BRIEFING_TRIGGER = "briefing"
 """Trigger label the briefing carries in the daemon's recent-nudges list."""
 
 _TOOL_FOLLOWUP = load_prompt_text("briefing_tool_followup")
+
+PELOTON_LOGIN_NOTE = (
+    "Peloton class search is unavailable: the stored login was refused. "
+    "Run `peloton login` to restore it."
+)
+"""Footer added when the class search failed for want of a valid login."""
 
 
 def _day_label(day: date) -> str:
@@ -141,8 +148,9 @@ def cmd_briefing(
 
     Args:
         args: Parsed CLI arguments with db, model, months, telegram and the
-            profile paths; the daemon also passes recent_nudges and the last
-            coach summary.
+            profile paths, including peloton_tokens_path, whose presence turns
+            on the Peloton class search; the daemon also passes recent_nudges
+            and the last coach summary.
         reply_markup: Optional Telegram reply markup for the message.
 
     Returns:
@@ -177,6 +185,11 @@ def cmd_briefing(
         getattr(args, "last_coach_summary", ""),
         getattr(args, "last_coach_summary_date", ""),
     )
+    tokens_path = getattr(args, "peloton_tokens_path", None)
+    class_search = PelotonClassSearch(tokens_path) if has_tokens(tokens_path) else None
+    context["class_guidance"] = load_prompt_text(
+        "briefing_class_search" if class_search else "briefing_class_spec"
+    )
 
     trace_id = create_llm_trace(conn, "briefing")
     messages = build_messages(
@@ -187,6 +200,8 @@ def cmd_briefing(
     )
 
     from tools import execute_run_sql, run_sql_tool
+
+    tools = run_sql_tool() + (find_classes_tool() if class_search else [])
 
     # The briefing reuses the nudge route: same latency budget and the same
     # kind of judgment, so a separate routing knob would only be one more
@@ -213,7 +228,7 @@ def cmd_briefing(
         try:
             result = call_llm(
                 messages,
-                tools=run_sql_tool(),
+                tools=tools,
                 metadata={"iteration": iteration},
                 **call_kwargs,
             )
@@ -235,6 +250,9 @@ def cmd_briefing(
             if tc.function.name == "run_sql":
                 logger.info("Briefing SQL: %s", tool_args.get("query", "")[:200])
                 tool_result = execute_run_sql(Path(args.db), tool_args)
+            elif tc.function.name == "find_peloton_classes" and class_search:
+                logger.info("Briefing Peloton search: %s", tool_args)
+                tool_result = class_search.execute(tool_args)
             else:
                 tool_result = json.dumps({"error": f"Unknown tool: {tc.function.name}"})
             messages.append(
@@ -279,6 +297,7 @@ def cmd_briefing(
             "recent_nudges_text": context.get("recent_nudges"),
             "last_coach_summary": context.get("last_coach_summary"),
             "display_units": str(units),
+            "class_search": "peloton" if class_search else "unavailable",
             "tool_calls": extract_tool_evidence(messages),
         },
         source_messages=slim_source_messages(messages, raw_text),
@@ -292,6 +311,8 @@ def cmd_briefing(
         sys.exit(1)
 
     text = f"{briefing_header(today)}\n\n{strip_charts(verified.strip()).strip()}"
+    if class_search and class_search.auth_failed:
+        text = f"{text}\n\n{PELOTON_LOGIN_NOTE}"
     _save_briefing(text, today, Path(getattr(args, "reports_dir", REPORTS_DIR)))
     print(text)
 
