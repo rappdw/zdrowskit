@@ -77,6 +77,9 @@ Examples:
 
     uv run python main.py nudge --trigger strategy_updated
         Send a nudge via Telegram acknowledging a strategy.md edit.
+
+    uv run python main.py briefing --no-telegram
+        Write today's morning briefing and print it without sending it.
 """
 
 from __future__ import annotations
@@ -90,6 +93,7 @@ from dotenv import load_dotenv
 # Ensure src/ is on the path when running from project root
 sys.path.insert(0, str(Path(__file__).parent / "src"))
 
+from cmd_briefing import cmd_briefing
 from cmd_db import cmd_db
 from cmd_events import CATEGORIES as EVENT_CATEGORIES, cmd_events
 from cmd_coach import cmd_coach
@@ -361,6 +365,35 @@ def main() -> None:
     )
     _add_db(p_nudge)
 
+    # briefing
+    p_briefing = sub.add_parser(
+        "briefing",
+        help="Send today's morning briefing: readiness, session, class (Telegram)",
+    )
+    p_briefing.add_argument(
+        "--months",
+        type=int,
+        default=1,
+        metavar="N",
+        help="History depth in months (default: 1)",
+    )
+    p_briefing.add_argument(
+        "--model",
+        default=None,
+        metavar="MODEL",
+        help=(
+            "litellm model string (default: the nudge route, "
+            f"{resolve_model_route('nudge').primary})"
+        ),
+    )
+    p_briefing.add_argument(
+        "--no-telegram",
+        dest="telegram",
+        action="store_false",
+        help="Print and save the briefing without sending it",
+    )
+    _add_db(p_briefing)
+
     # coach
     p_coach = sub.add_parser(
         "coach", help="Generate coaching proposals for plan/goal updates"
@@ -621,6 +654,7 @@ def main() -> None:
         "db",
         "insights",
         "nudge",
+        "briefing",
         "coach",
         "llm-log",
         "events",
@@ -699,6 +733,7 @@ def main() -> None:
         "doctor": cmd_doctor,
         "insights": cmd_insights,
         "nudge": cmd_nudge,
+        "briefing": cmd_briefing,
         "coach": _cli_coach,
         "llm-log": cmd_llm_log,
         "notify": cmd_notify,

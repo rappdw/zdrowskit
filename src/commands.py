@@ -916,6 +916,7 @@ TELEGRAM_BOT_COMMANDS: list[dict[str, str]] = [
 ADVANCED_TELEGRAM_BOT_COMMANDS: list[dict[str, str]] = [
     {"command": "notify", "description": "Tune notifications"},
     {"command": "review", "description": "Run weekly report"},
+    {"command": "briefing", "description": "Send today's morning briefing now"},
     {"command": "coach", "description": "Suggest plan changes"},
     {"command": "models", "description": "Model routing settings"},
     {"command": "context", "description": "View context files"},

@@ -9,6 +9,7 @@ uv run python main.py report              # current week: summary + daily
 uv run python main.py insights            # personalised weekly report via LLM
 uv run python main.py coach               # coaching review with plan/goal proposals
 uv run python main.py nudge               # short reactive nudge
+uv run python main.py briefing            # today's morning briefing (--no-telegram to print only)
 uv run python main.py context             # show context files and their status
 uv run python main.py setup               # create .env bootstrap files
 uv run python main.py doctor              # check local setup readiness
@@ -64,7 +65,7 @@ uv run python -m evals.leaderboard render
 
 ## Profile Selection
 
-`import`, `report`, `status`, `db`, `insights`, `nudge`, `coach`, `llm-log`,
+`import`, `report`, `status`, `db`, `insights`, `nudge`, `briefing`, `coach`, `llm-log`,
 `events`, `context`, `notify`, and `models` accept `--profile NAME` and default
 to the operator profile. The database, context, reports, nudges, notification
 preferences, model preferences, and Telegram destination are derived from

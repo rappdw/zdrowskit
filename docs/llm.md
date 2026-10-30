@@ -156,7 +156,8 @@ measurement that set it, and is the only copy that cannot drift from the code.
 
 ## Verification
 
-Reports, coach reviews, and nudges are verified before they are saved or sent.
+Reports, coach reviews, nudges, and the daily briefing are verified before they
+are saved or sent.
 The verifier returns one of three outcomes:
 
 - `pass` — deliver the draft;
@@ -175,6 +176,7 @@ ZDROWSKIT_ENABLE_LLM_VERIFICATION=0
 ZDROWSKIT_VERIFY_INSIGHTS=0
 ZDROWSKIT_VERIFY_COACH=0
 ZDROWSKIT_VERIFY_NUDGE=0
+ZDROWSKIT_VERIFY_BRIEFING=0
 ZDROWSKIT_MAX_VERIFICATION_REVISIONS=1
 ```
 

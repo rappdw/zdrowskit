@@ -626,6 +626,26 @@ class TelegramChatHandler:
                     self._poller.edit_message(
                         status_id, "\u2713 Review for last week done."
                     )
+        elif cmd == "/briefing":
+            status_prefix = "Writing today's briefing "
+            status_id = self._poller.send_reply(
+                f"{status_prefix}.", reply_to_message_id=message_id
+            )
+            stop_anim, anim_thread = self._start_placeholder_animation(
+                status_id, prefix=status_prefix
+            )
+            delivered = False
+            try:
+                delivered = self._daemon._run_briefing(manual=True)
+            finally:
+                self._stop_placeholder_animation(stop_anim, anim_thread)
+                if status_id is not None:
+                    self._poller.edit_message(
+                        status_id,
+                        "\u2713 Briefing sent."
+                        if delivered
+                        else "Briefing failed; details above.",
+                    )
         elif cmd == "/coach":
             parts = text.split()
             week = "last"

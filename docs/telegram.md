@@ -82,11 +82,13 @@ The visible Telegram command menu contains:
 ```
 
 `/advanced` shows less-used commands that remain typeable but are hidden from
-the Telegram menu: `/notify`, `/review`, `/coach [current|last]`,
+the Telegram menu: `/notify`, `/review`, `/briefing`, `/coach [current|last]`,
 `/models`, `/context [name]`, `/events [N] [category]`,
 `/llm_log [N|id ID|trace ID]`, and `/tutorial`.
 
 `/review` takes no arguments and always reports the last completed week.
+`/briefing` sends today's morning briefing now, whether or not the scheduled
+one has gone out; see [The Daily Briefing](notifications.md#the-daily-briefing).
 `/coach` defaults to last week and also accepts `current` for a provisional
 review of this week so far.
 

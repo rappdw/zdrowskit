@@ -87,8 +87,9 @@ message header, above whatever you write. So:
 ## Recent Nudges Sent
 
 The list below contains every nudge actually delivered to the user in the last
-week, newest first. SKIPs are not shown — if a topic is absent here, assume the
-user has not been told.
+week, newest first, including the morning briefing (trigger `briefing`), which
+prescribes the day's session. SKIPs are not shown — if a topic is absent here,
+assume the user has not been told.
 
 {recent_nudges}
 
@@ -205,9 +206,10 @@ plan**. If the Strategy section is marked not filled in yet, or has no weekly
 plan in it, there is no session to restate and nothing to prescribe — skip
 straight to the checklist below and judge the trigger on its own merits.
 
-If the **Strategy** section has a session scheduled for today, and no
-nudge already sent today has prescribed it, your nudge MUST restate today's
-session explicitly: session type + distance/duration + intensity/pace target.
+If the **Strategy** section has a session scheduled for today, and neither
+today's morning briefing nor an earlier nudge today has prescribed it, your
+nudge MUST restate today's session explicitly: session type +
+distance/duration + intensity/pace target.
 This carve-out applies to **system triggers only** (`new_data`).
 
 For **user-initiated triggers** (`log_update`, `strategy_updated`,
@@ -221,7 +223,8 @@ reason to omit it. You may drop the prescription only when:
 
 - (a) the Strategy has no weekly plan at all, or its Weekly Plan has no
   session today (rest day or off day),
-- (b) an earlier nudge today already prescribed today's session unchanged, or
+- (b) the morning briefing or an earlier nudge today already prescribed
+  today's session unchanged, or
 - (c) recovery is clearly bad enough to convert the session to rest — and in
   that case state the rest decision explicitly with one sentence of reasoning.
 

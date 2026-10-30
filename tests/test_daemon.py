@@ -1715,6 +1715,25 @@ class TestTelegramCommands:
         assert not hasattr(args, "week")
         assert args.telegram is True
 
+    def test_briefing_command_runs_a_manual_briefing(self, tmp_path: Path) -> None:
+        daemon = _make_daemon(tmp_path)
+        daemon._chat._poller = MagicMock()
+        daemon._poller.send_reply.return_value = 77
+
+        with patch.object(daemon, "_run_briefing", return_value=True) as run:
+            daemon._handle_command("/briefing", 42)
+
+        run.assert_called_once_with(manual=True)
+        daemon._poller.edit_message.assert_called_with(77, "\u2713 Briefing sent.")
+
+    def test_briefing_check_runs_through_the_flow(self, tmp_path: Path) -> None:
+        daemon = _make_daemon(tmp_path)
+
+        with patch.object(daemon._briefing_flow, "check") as check:
+            daemon._briefing_check_once()
+
+        check.assert_called_once()
+
     def test_review_rejects_any_argument(self, tmp_path: Path) -> None:
         """`/review current` used to produce a mid-week report. That report is
         gone, so the old invocation must say so rather than quietly return a
